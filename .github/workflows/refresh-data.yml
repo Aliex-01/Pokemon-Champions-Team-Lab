@@ -5,7 +5,7 @@ name: Refrescar datos (rebuild Netlify)
 on:
   schedule:
     # Día 5 de cada mes a las 06:00 UTC (Smogon publica las stats a principios de mes).
-    - cron: '0 6 5 * *'
+    - cron: '0 9 * * *'
   workflow_dispatch: {} # permite lanzarlo a mano desde la pestaña Actions
 
 jobs:
