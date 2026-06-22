@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(npx tsc -b --noEmit 2>&1)",
+      "PowerShell(npx eslint . 2>&1)",
+      "PowerShell($node = \\(Get-Command node -ErrorAction SilentlyContinue\\).Source; \"node: $node\"; Test-Path \".\\\\node_modules\\\\.bin\\\\tsc.cmd\"; Test-Path \".\\\\node_modules\\\\typescript\\\\bin\\\\tsc\")",
+      "PowerShell($env:Path = \"C:\\\\Program Files\\\\nodejs;$env:Path\"; node node_modules\\\\typescript\\\\bin\\\\tsc -b --noEmit 2>&1 | Select-Object -First 60)",
+      "WebFetch(domain:champdex.com)"
+    ]
+  }
+}

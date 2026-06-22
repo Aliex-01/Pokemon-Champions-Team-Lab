@@ -1,0 +1,177 @@
+@import "tailwindcss";
+
+@theme {
+  --color-poke-red: #ee1515;
+  --color-poke-dark: #1a1a2e;
+  --color-poke-panel: #16213e;
+  --color-poke-accent: #0f3460;
+  --color-poke-gold: #e94560;
+  --font-sans: "Segoe UI", system-ui, sans-serif;
+}
+
+body {
+  @apply bg-poke-dark text-gray-100 min-h-screen;
+  font-family: var(--font-sans);
+}
+
+/* Barra de scroll personalizada (en lugar de la blanca por defecto) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-poke-accent) transparent;
+}
+*::-webkit-scrollbar {
+  width: 14px;
+  height: 14px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: var(--color-poke-accent);
+  border-radius: 9999px;
+  /* Borde transparente + clip para separar el pulgar del borde redondeado */
+  border: 4px solid transparent;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-poke-gold);
+  background-clip: padding-box;
+}
+
+.type-normal { @apply bg-gray-400 text-gray-900; }
+.type-fire { @apply bg-orange-500 text-white; }
+.type-water { @apply bg-blue-500 text-white; }
+.type-electric { @apply bg-yellow-400 text-gray-900; }
+.type-grass { @apply bg-green-500 text-white; }
+.type-ice { @apply bg-cyan-300 text-gray-900; }
+.type-fighting { @apply bg-red-700 text-white; }
+.type-poison { @apply bg-purple-500 text-white; }
+.type-ground { @apply bg-amber-700 text-white; }
+.type-flying { @apply bg-indigo-400 text-white; }
+.type-psychic { @apply bg-pink-500 text-white; }
+.type-bug { @apply bg-lime-500 text-gray-900; }
+.type-rock { @apply bg-yellow-700 text-white; }
+.type-ghost { @apply bg-purple-700 text-white; }
+.type-dragon { @apply bg-indigo-700 text-white; }
+.type-dark { @apply bg-gray-700 text-white; }
+.type-steel { @apply bg-gray-400 text-gray-900; }
+.type-fairy { @apply bg-pink-300 text-gray-900; }
+
+.panel {
+  @apply bg-poke-panel rounded-xl border border-poke-accent/50 shadow-lg transition-colors duration-200;
+}
+
+.btn-primary {
+  @apply px-4 py-2 bg-poke-gold hover:bg-poke-gold/80 text-white rounded-lg font-medium transition-colors cursor-pointer;
+}
+
+.btn-secondary {
+  @apply px-4 py-2 bg-poke-accent hover:bg-poke-accent/80 text-white rounded-lg font-medium transition-colors cursor-pointer;
+}
+
+.input-field {
+  @apply w-full px-3 py-2 bg-poke-dark border border-poke-accent rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-poke-gold/50;
+}
+
+/* Oculta las flechas nativas de los input number */
+.no-spinner::-webkit-inner-spin-button,
+.no-spinner::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.no-spinner {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.select-field {
+  @apply w-full px-3 py-2 bg-poke-dark border border-poke-accent rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-poke-gold/50 cursor-pointer;
+}
+
+/* Animación de entrada para los resultados de daño */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in-up {
+  animation: fade-in-up 0.25s ease-out both;
+}
+
+/* Destello al saltar a una fila desde el resumen del Speed Tier */
+@keyframes row-flash {
+  0% { background-color: rgb(233 69 96 / 0.45); }
+  100% { background-color: rgb(233 69 96 / 0.15); } /* se desvanece hasta el 15% */
+}
+.row-flash {
+  animation: row-flash 1.2s ease-out forwards;
+}
+
+/* Destello verde de confirmación (al aplicar una selección) */
+@keyframes green-flash {
+  0% { background-color: rgb(34 197 94 / 0.40); }
+  100% { background-color: transparent; }
+}
+.green-flash {
+  animation: green-flash 1s ease-out;
+}
+
+/* Entrada de página al cambiar de vista */
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.page-enter {
+  animation: page-enter 0.3s ease-out;
+}
+
+/* Barra que crece desde 0 al aparecer (escala horizontal) */
+@keyframes grow-x {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.grow-x {
+  transform-origin: left;
+  animation: grow-x 0.6s ease-out;
+}
+
+/* "Pop" al soltar un Pokémon tras reordenar (drag & drop) */
+@keyframes drop-pop {
+  0% { transform: scale(0.9); }
+  60% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+.drop-pop {
+  animation: drop-pop 0.35s ease-out;
+}
+
+/* Toast que entra deslizando desde abajo y se desvanece al salir */
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes toast-out {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(12px); }
+}
+.toast-in { animation: toast-in 0.25s ease-out forwards; }
+.toast-out { animation: toast-out 0.3s ease-in forwards; }
+
+/* Respeta a quien prefiere menos movimiento */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in-up,
+  .page-enter,
+  .grow-x,
+  .toast-in,
+  .toast-out,
+  .drop-pop {
+    animation: none;
+  }
+}
+
+.nav-link {
+  @apply px-4 py-2 rounded-lg border border-transparent text-gray-300 hover:bg-poke-accent/50 hover:text-white transition-colors;
+}
+
+.nav-link-active {
+  @apply bg-poke-gold/20 text-poke-gold border-poke-gold/30;
+}

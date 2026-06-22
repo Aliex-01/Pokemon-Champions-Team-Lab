@@ -1,0 +1,16 @@
+name: Refrescar datos (rebuild Netlify)
+
+# Dispara una reconstrucción en Netlify para que vuelva a descargar los datos
+# de Smogon/PokeAPI (npm run build los regenera en el servidor de Netlify).
+on:
+  schedule:
+    # Día 5 de cada mes a las 06:00 UTC (Smogon publica las stats a principios de mes).
+    - cron: '0 6 5 * *'
+  workflow_dispatch: {} # permite lanzarlo a mano desde la pestaña Actions
+
+jobs:
+  trigger-netlify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Lanzar build hook de Netlify
+        run: curl -fsSL -X POST -d '{}' "${{ secrets.NETLIFY_BUILD_HOOK }}"
