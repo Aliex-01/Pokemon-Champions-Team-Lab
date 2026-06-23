@@ -39,6 +39,15 @@ export function localizeMoveDesc(moveId: string, enDesc: string | undefined, lan
   return cache?.es?.moveDesc?.[moveId] ?? enDesc;
 }
 
+/** Busca la especie mega cuya megapiedra coincide con `stone` (para parsear |-mega|). */
+export function getMegaByStone(stone: string): SpeciesData | undefined {
+  if (!cache || !stone) return undefined;
+  const n = stone.toLowerCase().replace(/[^a-z0-9]/g, '');
+  return cache.species.find(
+    (s) => s.isMega && s.megaStone && s.megaStone.toLowerCase().replace(/[^a-z0-9]/g, '') === n,
+  );
+}
+
 export function getSpeciesByName(name: string): SpeciesData | undefined {
   if (!cache) return undefined;
   const normalized = name.toLowerCase().replace(/[^a-z0-9]/g, '');

@@ -45,6 +45,7 @@ const NAV_ITEMS = [
   { to: '/coverage', label: 'Cobertura' },
   { to: '/damage', label: 'Calculadora' },
   { to: '/analysis', label: 'Análisis', beta: true },
+  { to: '/replays', label: 'Repeticiones', beta: true },
 ];
 
 export function Layout() {

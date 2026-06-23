@@ -4,7 +4,7 @@ import { PokemonEditor } from '../components/PokemonEditor';
 import { Toast } from '../components/Toast';
 import { useLang } from '../lib/i18n';
 import { getSpecies } from '../lib/championsData';
-import { toTraditionalEvs } from '../lib/stats';
+import { convertInvestment } from '../lib/stats';
 import { parseShowdownTeam } from '../lib/showdownImport';
 import type { ChampionsData, EvSpread, SavedTeam } from '../types/pokemon';
 
@@ -185,8 +185,9 @@ function ShowdownExport({ team, data }: { team: SavedTeam; data: ChampionsData }
         lines.push(`Ability (base): ${p.preMegaAbility}`);
       }
       if (p.level && p.level !== 100) lines.push(`Level: ${p.level}`);
-      // En modo Champions los EVs son stat points; Showdown espera EVs tradicionales.
-      const evs = p.evMode === 'champions' ? toTraditionalEvs(p.evs) : p.evs;
+      // El formato Champions usa Stat Points: exportamos siempre en stat points
+      // (si el Pokémon estuviera en EVs tradicionales, lo convertimos).
+      const evs = p.evMode === 'champions' ? p.evs : convertInvestment(p.evs, 'traditional', 'champions');
       const evLine = (['hp', 'atk', 'def', 'spa', 'spd', 'spe'] as const)
         .filter((k) => evs[k] > 0)
         .map((k) => `${evs[k]} ${SHOWDOWN_STAT_LABELS[k]}`)

@@ -154,6 +154,33 @@ body {
   animation: drop-pop 0.35s ease-out;
 }
 
+/* Gráfico circular que aparece girando (Move Usage) */
+@keyframes pie-in {
+  from { opacity: 0; transform: rotate(-90deg) scale(0.7); }
+  to { opacity: 1; transform: rotate(0) scale(1); }
+}
+.pie-in {
+  animation: pie-in 0.5s ease-out both;
+}
+
+/* Revelado tipo reloj: una máscara cónica barre de 0° a 360° al aparecer.
+   initial-value 360deg → en reposo (o sin soporte) la tarta se ve completa. */
+@property --pie-sweep {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 360deg;
+}
+@keyframes pie-sweep { from { --pie-sweep: 0deg; } }
+.pie-reveal {
+  -webkit-mask: conic-gradient(#000 var(--pie-sweep), transparent 0deg);
+  mask: conic-gradient(#000 var(--pie-sweep), transparent 0deg);
+  animation: pie-sweep 0.9s ease-out, pie-in 0.5s ease-out both;
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+.pie-reveal:hover {
+  box-shadow: 0 0 22px rgb(233 69 96 / 0.45);
+}
+
 /* Toast que entra deslizando desde abajo y se desvanece al salir */
 @keyframes toast-in {
   from { opacity: 0; transform: translateY(12px); }
@@ -193,7 +220,9 @@ body {
   .pop-in,
   .toast-in,
   .toast-out,
-  .drop-pop {
+  .drop-pop,
+  .pie-in,
+  .pie-reveal {
     animation: none;
   }
   .skeleton::after { animation: none; }
