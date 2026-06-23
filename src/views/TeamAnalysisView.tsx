@@ -77,21 +77,43 @@ const TERRAIN_BY_MOVE: Record<string, string> = {
 };
 const WEATHER_LABEL: Record<string, string> = { sun: 'Sol', rain: 'Lluvia', sand: 'Arena', snow: 'Nieve' };
 
-/** Anima un número de 0 a `target` (con respeto a prefers-reduced-motion). */
+// Habilidades "-ate": cambian el tipo de los ataques (ofensiva). `from: '*'` => cualquier tipo.
+const ABILITY_MOVE_TYPE: Record<string, { from: string; to: string }> = {
+  Pixilate: { from: 'Normal', to: 'Fairy' },
+  Refrigerate: { from: 'Normal', to: 'Ice' },
+  Aerilate: { from: 'Normal', to: 'Flying' },
+  Galvanize: { from: 'Normal', to: 'Electric' },
+  Dragonize: { from: 'Normal', to: 'Dragon' }, // Feraligatr-Mega (Champions)
+  Normalize: { from: '*', to: 'Normal' },
+};
+function abilityMoveType(moveType: string, ability: string): string {
+  const conv = ABILITY_MOVE_TYPE[ability];
+  if (conv && (conv.from === '*' || conv.from === moveType)) return conv.to;
+  return moveType;
+}
+
+/**
+ * Anima un número desde el último valor mostrado hasta `target`.
+ * Al cambiar de equipo cuenta desde el valor anterior, no desde 0.
+ * Respeta prefers-reduced-motion.
+ */
 function useCountUp(target: number, duration = 700): number {
   const [value, setValue] = useState(0);
+  const prevRef = useRef(0);
   const rafRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    if (reduce) { setValue(target); return; }
+    const from = prevRef.current;
+    if (reduce || from === target) { setValue(target); prevRef.current = target; return; }
     const start = performance.now();
-    const from = 0;
     const tick = (now: number) => {
       const p = Math.min(1, (now - start) / duration);
       // easeOutCubic
       const eased = 1 - Math.pow(1 - p, 3);
-      setValue(Math.round(from + (target - from) * eased));
+      const v = Math.round(from + (target - from) * eased);
+      setValue(v);
+      prevRef.current = v; // guarda el último valor mostrado (robusto ante interrupciones)
       if (p < 1) rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
@@ -111,8 +133,15 @@ export function TeamAnalysisView({ data }: Props) {
   const { t } = useLang();
   const tc = data.typeChart;
   const [meta, setMeta] = useState<MetaBuildsData | null>(null);
+  // Tras el primer frame las barras pasan de 0 a su valor (crecen al entrar);
+  // después, los cambios de equipo transicionan suavemente entre valores.
+  const [barsReady, setBarsReady] = useState(false);
 
   useEffect(() => { loadMetaBuilds().then(setMeta); }, []);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setBarsReady(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   const analysis = useMemo(() => {
     const mons = (activeTeam?.pokemon ?? [])
@@ -123,7 +152,8 @@ export function TeamAnalysisView({ data }: Props) {
         const moveTypes = [...new Set(moveIds
           .map((id) => data.moveData?.[id])
           .filter((md): md is NonNullable<typeof md> => !!md && md.category !== 'Status')
-          .map((md) => md.type))];
+          // Habilidades "-ate" (Pixilate, etc.): el ataque cuenta como su tipo real.
+          .map((md) => abilityMoveType(md.type, p.ability)))];
         const hasPhysical = moveIds.some((id) => data.moveData?.[id]?.category === 'Physical' && (data.moveData?.[id]?.power ?? 0) > 0);
         const hasSpecial = moveIds.some((id) => data.moveData?.[id]?.category === 'Special' && (data.moveData?.[id]?.power ?? 0) > 0);
         const has = (s: Set<string>) => moveIds.some((id) => s.has(id));
@@ -349,8 +379,11 @@ export function TeamAnalysisView({ data }: Props) {
                 </div>
                 <div className="h-2.5 rounded-full bg-poke-dark/60 overflow-hidden">
                   <div
-                    className={`h-full grow-x ${scoreColor(analysis.scores[k], 25)}`}
-                    style={{ width: `${(analysis.scores[k] / 25) * 100}%`, animationDelay: `${idx * 120}ms` }}
+                    className={`h-full rounded-full transition-[width,background-color] duration-500 ease-out ${scoreColor(analysis.scores[k], 25)}`}
+                    style={{
+                      width: `${barsReady ? (analysis.scores[k] / 25) * 100 : 0}%`,
+                      transitionDelay: barsReady ? `${idx * 80}ms` : '0ms',
+                    }}
                   />
                 </div>
               </div>
