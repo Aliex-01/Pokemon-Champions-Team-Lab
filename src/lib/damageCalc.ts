@@ -44,6 +44,8 @@ export interface FieldState {
   gravity: boolean;
   magicRoom: boolean;
   wonderRoom: boolean;
+  /** Movimientos de área (Heat Wave, etc.) golpean a un solo objetivo (sin el ×0.75 de dobles). */
+  singleTarget: boolean;
 }
 
 export interface DamageResult {
@@ -129,6 +131,12 @@ export function calcMove(
       overrides.type = 'Dragon';
     }
 
+    // Objetivo único de un ataque de área (Heat Wave, Earthquake…): al pegar a un
+    // solo Pokémon no se aplica la reducción ×0.75 de dobles. Lo conseguimos
+    // cambiando su `target` a uno individual, así @smogon/calc no lo trata como área.
+    const isSpreadMove = ['allAdjacent', 'allAdjacentFoes'].includes(move.target);
+    if (field.singleTarget && isSpreadMove) overrides.target = 'normal';
+
     // Last Respects (Última Baza): @smogon/calc no escala su potencia, lo hacemos a mano.
     // BP = 50 × (1 + aliados debilitados), tope 5 aliados → 300.
     if (move.name === 'Last Respects') {
@@ -165,6 +173,7 @@ export function calcMove(
       // range() lanza si el daño es 0 por inmunidad: lo dejamos en 0.
     }
     let descNote = '';
+    if (isSpreadMove) descNote += field.singleTarget ? ' — objetivo único' : ' — área ×0.75';
 
     // Habilidades nuevas de Z-A que @smogon/calc no implementa:
     // Fire Mane (Pyroar-Mega): +50% en ataques de Fuego.

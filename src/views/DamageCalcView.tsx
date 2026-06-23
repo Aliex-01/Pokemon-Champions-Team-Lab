@@ -136,7 +136,7 @@ export function DamageCalcView({ data }: DamageCalcViewProps) {
   const [yourFainted, setYourFainted] = usePersistedState<number>('dmgcalc-yourFainted', 0);
   const [rivalFainted, setRivalFainted] = usePersistedState<number>('dmgcalc-rivalFainted', 0);
   const [rival, setRival] = usePersistedState<CalcMon>('dmgcalc-rival', createRival());
-  const [field, setField] = usePersistedState<FieldState>('dmgcalc-field', { weather: '', terrain: '', crit: false, gravity: false, magicRoom: false, wonderRoom: false });
+  const [field, setField] = usePersistedState<FieldState>('dmgcalc-field', { weather: '', terrain: '', crit: false, gravity: false, magicRoom: false, wonderRoom: false, singleTarget: false });
   const [yourSide, setYourSide] = usePersistedState<SideState>('dmgcalc-yourSide', emptySide());
   const [rivalSide, setRivalSide] = usePersistedState<SideState>('dmgcalc-rivalSide', emptySide());
   const [builds, setBuilds] = useState<MetaBuildsData | null>(null);
@@ -327,6 +327,13 @@ function FieldColumn({ field, setField, yourSide, setYourSide, rivalSide, setRiv
           expand
           onChange={(tr) => setField({ ...field, terrain: tr as Terrain })}
         />
+      </div>
+      <div className="pt-1 border-t border-poke-accent/30">
+        <div className="text-xs text-gray-400 mb-1">{t('Objetivo')}</div>
+        <div className="grid grid-cols-2 gap-2 [&_button]:w-full">
+          <FieldButton label={t('Único')} active={field.singleTarget} onClick={() => setField({ ...field, singleTarget: true })} />
+          <FieldButton label={t('Doble')} active={!field.singleTarget} onClick={() => setField({ ...field, singleTarget: false })} />
+        </div>
       </div>
       <div className="grid grid-cols-2 gap-x-3 gap-y-2 pt-1 border-t border-poke-accent/30">
         <SideChips label={t('Tu lado')} side={yourSide} onChange={setYourSide} />
