@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { Logo } from './Logo';
 import { useTeam } from '../store/teamStore';
 import { useLang } from '../lib/i18n';
+import { useRouteSeo } from '../lib/seo';
 import { Dropdown } from './Dropdown';
 import { Modal } from './Modal';
 
@@ -50,6 +51,8 @@ export function Layout() {
   const { teams, activeTeamId, setActiveTeamId, createTeam, deleteTeam, renameTeam } = useTeam();
   const { t, lang, toggle } = useLang();
   const activeTeam = teams.find((t) => t.id === activeTeamId);
+  // Actualiza title/description/canonical/OG según la ruta y el idioma.
+  useRouteSeo();
 
   // Diálogo activo y valor del input.
   const [dialog, setDialog] = useState<null | 'create' | 'rename' | 'delete'>(null);

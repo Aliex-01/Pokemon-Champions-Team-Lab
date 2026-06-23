@@ -1,0 +1,36 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1a1a2e" />
+      <stop offset="1" stop-color="#2a1a3e" />
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.4" r="0.7">
+      <stop offset="0" stop-color="#e84393" stop-opacity="0.22" />
+      <stop offset="1" stop-color="#e84393" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)" />
+  <rect width="1200" height="630" fill="url(#glow)" />
+
+  <!-- Poké ball estilizada -->
+  <g transform="translate(600,232)">
+    <circle r="120" fill="#16213e" stroke="#e84393" stroke-width="6" />
+    <path d="M -120 0 A 120 120 0 0 1 120 0" fill="#e84393" fill-opacity="0.9" />
+    <rect x="-120" y="-6" width="240" height="12" fill="#0f3460" />
+    <circle r="34" fill="#16213e" stroke="#e84393" stroke-width="8" />
+    <circle r="14" fill="#f5f6fa" />
+  </g>
+
+  <text x="600" y="446" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="68" font-weight="700" fill="#f5f6fa">
+    Pokémon Champions <tspan fill="#e84393">Team Lab</tspan>
+  </text>
+
+  <text x="600" y="500" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="30" fill="#a9b1d6">
+    Constructor y análisis de equipos · VGC Champions Reg M-B
+  </text>
+
+  <text x="600" y="556" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="24" fill="#6b7394">
+    EVs · Speed Tier · Calculadora de daño · Builds del meta · Cobertura
+  </text>
+</svg>
