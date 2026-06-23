@@ -47,9 +47,25 @@ interface RawReplay {
 /** Normaliza como hace Showdown (toID): minúsculas y solo alfanumérico. */
 export const toID = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
 
-/** Resuelve un nombre de especie de Showdown a su id en nuestra base (o null). */
+/**
+ * Resuelve un nombre de especie de Showdown a su id en nuestra base.
+ * 1) intenta el nombre exacto;
+ * 2) si no, prueba quitando sufijos de forma ("Maushold-Four" → "Maushold");
+ * 3) como último recurso usa el id normalizado de Showdown (para no perder el
+ *    hueco del equipo y que el sprite siga cargando).
+ */
 function resolveSpecies(name: string): string | null {
-  return getSpeciesByName(name)?.id ?? null;
+  const clean = speciesField(name);
+  if (!clean) return null;
+  const exact = getSpeciesByName(clean);
+  if (exact) return exact.id;
+  const parts = clean.split('-');
+  while (parts.length > 1) {
+    parts.pop();
+    const base = getSpeciesByName(parts.join('-'));
+    if (base) return base.id;
+  }
+  return toID(clean) || null;
 }
 
 /** Id de la especie base (las megas/formas comparten base para casar equipos). */
@@ -133,8 +149,11 @@ export function parseReplay(raw: RawReplay, username: string): MatchRecord {
       const id = resolveSpecies(speciesField(parts[2] ?? ''));
       if (id) {
         active[pos] = id;
-        push(brought[side], id);
-        if (started && cmd === 'switch') push(leads[side], id);
+        // Guardamos la especie base: si un Pokémon vuelve ya megaevolucionado,
+        // su línea lo nombra "X-Mega" y no debe contar como un Pokémon distinto.
+        const baseId = baseSpeciesId(id);
+        push(brought[side], baseId);
+        if (started && cmd === 'switch') push(leads[side], baseId);
       }
     } else if (cmd === 'move') {
       const pos = parts[1].slice(0, 3);
