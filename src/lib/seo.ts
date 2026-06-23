@@ -73,6 +73,16 @@ const ROUTE_META: Record<string, RouteMeta> = {
       en: 'Champions team analysis: archetype, category score, roles, synergies, meta threats and warnings.',
     },
   },
+  '/replays': {
+    title: {
+      es: 'Análisis de Repeticiones VGC — Pokémon Champions Team Lab',
+      en: 'Replay Analysis VGC — Pokémon Champions Team Lab',
+    },
+    desc: {
+      es: 'Importa repeticiones de Pokémon Showdown y analiza tus resultados: win-rate por equipo, leads, bring-rate y rivales más enfrentados.',
+      en: 'Import Pokémon Showdown replays and analyze your results: win rate by team, leads, bring rate and most-faced opponents.',
+    },
+  },
 };
 
 const FALLBACK: RouteMeta = ROUTE_META['/'];
