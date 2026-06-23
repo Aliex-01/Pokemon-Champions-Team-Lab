@@ -49,6 +49,18 @@ const SET = {
   allySupport: new Set(['helpinghand', 'decorate', 'coaching']),
   weatherMove: new Set(['sunnyday', 'raindance', 'sandstorm', 'snowscape', 'chillyreception']),
   terrainMove: new Set(['electricterrain', 'grassyterrain', 'psychicterrain', 'mistyterrain']),
+  // Movimientos de mejora propia (setup) e intercambio (pivote).
+  setup: new Set(['swordsdance', 'nastyplot', 'dragondance', 'calmmind', 'bulkup', 'quiverdance', 'shellsmash', 'irondefense', 'agility', 'rockpolish', 'workup', 'victorydance', 'tidyup', 'clangoroussoul', 'noretreat', 'filletaway', 'tailglow', 'geomancy', 'curse']),
+  pivot: new Set(['uturn', 'voltswitch', 'flipturn', 'partingshot', 'teleport', 'chillyreception', 'batonpass']),
+  // Ataques de área dañinos que golpean a ambos rivales (o a todos los adyacentes).
+  spread: new Set([
+    'heatwave', 'blizzard', 'muddywater', 'dazzlinggleam', 'hypervoice', 'eruption', 'waterspout',
+    'rockslide', 'earthquake', 'surf', 'discharge', 'lavaplume', 'bulldoze', 'sludgewave', 'razorleaf',
+    'snarl', 'strugglebug', 'makeitrain', 'paraboliccharge', 'breakingswipe', 'burningjealousy',
+    'glaciate', 'dragonenergy', 'originpulse', 'precipiceblades', 'astralbarrage', 'glaciallance',
+    'sandsearstorm', 'wildboltstorm', 'bleakwindstorm', 'springtidestorm', 'icywind', 'electroweb',
+    'overdrive', 'fierywrath',
+  ]),
 };
 const WEATHER_ABILITIES = new Set(['Drought', 'Drizzle', 'Sand Stream', 'Snow Warning', 'Orichalcum Pulse', 'Desolate Land', 'Primordial Sea']);
 const TERRAIN_ABILITIES = new Set(['Electric Surge', 'Grassy Surge', 'Psychic Surge', 'Misty Surge', 'Hadron Engine']);
@@ -76,6 +88,18 @@ const TERRAIN_BY_MOVE: Record<string, string> = {
   electricterrain: 'electric', grassyterrain: 'grassy', psychicterrain: 'psychic', mistyterrain: 'misty',
 };
 const WEATHER_LABEL: Record<string, string> = { sun: 'Sol', rain: 'Lluvia', sand: 'Arena', snow: 'Nieve' };
+
+// Categorías de rol y su color (ofensiva, defensa, velocidad, apoyo).
+type RoleKind = 'off' | 'def' | 'spe' | 'sup';
+const ROLE_KIND_CLASS: Record<RoleKind, string> = {
+  off: 'bg-red-500/20 text-red-200 border-red-500/40',
+  def: 'bg-sky-500/20 text-sky-200 border-sky-500/40',
+  spe: 'bg-amber-500/20 text-amber-100 border-amber-500/40',
+  sup: 'bg-purple-500/20 text-purple-200 border-purple-500/40',
+};
+const ROLE_KIND_LABEL: Record<RoleKind, string> = {
+  off: 'Ofensiva', def: 'Defensa', spe: 'Velocidad', sup: 'Apoyo',
+};
 
 // Habilidades "-ate": cambian el tipo de los ataques (ofensiva). `from: '*'` => cualquier tipo.
 const ABILITY_MOVE_TYPE: Record<string, { from: string; to: string }> = {
@@ -202,16 +226,63 @@ export function TeamAnalysisView({ data }: Props) {
     const intimidate = mons.filter((m) => m.ability === 'Intimidate');
     const scarf = mons.filter((m) => m.p.item === 'Choice Scarf');
 
-    // Roles por Pokémon.
+    // Roles por Pokémon: etiquetas categorizadas (ofensiva / defensa / velocidad
+    // / apoyo) deducidas de stats base, inversión de EVs, objeto, habilidad y
+    // movimientos. Mucho más informativo que un simple "Físico/Soporte".
     const roles = mons.map((m) => {
-      const r: string[] = [];
-      if (m.hasPhysical && m.hasSpecial) r.push('Mixto');
-      else if (m.hasPhysical) r.push('Físico');
-      else if (m.hasSpecial) r.push('Especial');
-      const support = m.has(SET.speedCtrl) || m.has(SET.redirection) || m.has(SET.screens) || m.has(SET.protectArea) || m.has(SET.allySupport) || m.has(SET.fakeOut) || m.has(SET.paralyze) || m.has(SET.burn) || m.has(SET.sleep);
-      if (support) r.push('Soporte');
-      if (m.bulk >= 300 && (m.has(SET.recovery) || (!m.hasPhysical && !m.hasSpecial))) r.push('Muro');
-      return { name: m.name, speciesId: m.p.speciesId, roles: r };
+      const tags: { label: string; kind: RoleKind }[] = [];
+      const bs = m.sp.baseStats;
+      const ev = m.p.evs;
+      // Umbrales según el modo de EVs (Champions usa 0–32; tradicional 0–252).
+      const champ = m.p.evMode === 'champions';
+      const HI = champ ? 20 : 160;   // inversión fuerte
+      const MED = champ ? 12 : 100;  // inversión relevante
+      const LOWSPE = champ ? 4 : 20;  // velocidad casi sin tocar
+      const DEFBUDGET = champ ? 28 : 200;
+
+      // --- Identidad ofensiva ---
+      const physInv = ev.atk >= MED, specInv = ev.spa >= MED;
+      if ((m.hasPhysical && m.hasSpecial) || (physInv && specInv)) tags.push({ label: 'Mixto', kind: 'off' });
+      else if (physInv || (m.hasPhysical && bs.atk >= bs.spa)) tags.push({ label: 'Físico', kind: 'off' });
+      else if (specInv || (m.hasSpecial && bs.spa > bs.atk)) tags.push({ label: 'Especial', kind: 'off' });
+      if (m.has(SET.setup)) tags.push({ label: 'Setup', kind: 'off' });
+      // Prioridad real (no contar Fake Out, que ya tiene su etiqueta).
+      if (m.moveIds.some((id) => SET.priority.has(id) && id !== 'fakeout')) tags.push({ label: 'Prioridad', kind: 'off' });
+      // Ataques de área: golpean a ambos rivales (clave en dobles).
+      if (m.has(SET.spread)) tags.push({ label: 'Área', kind: 'off' });
+
+      // --- Velocidad ---
+      if (m.p.item === 'Choice Scarf') tags.push({ label: 'Scarfer', kind: 'spe' });
+      else if (ev.spe >= HI) tags.push({ label: 'Veloz', kind: 'spe' });
+      else if (bs.spe <= 55 && ev.spe <= LOWSPE) tags.push({ label: 'Lento (TR)', kind: 'spe' });
+
+      // --- Defensa ---
+      if (ev.hp + ev.def + ev.spd >= DEFBUDGET) {
+        const diff = ev.def - ev.spd;
+        if (diff >= MED / 2) tags.push({ label: 'Muro Físico', kind: 'def' });
+        else if (-diff >= MED / 2) tags.push({ label: 'Muro Especial', kind: 'def' });
+        else tags.push({ label: 'Tanque', kind: 'def' });
+      }
+      if (m.has(SET.recovery)) tags.push({ label: 'Recuperación', kind: 'def' });
+
+      // --- Funciones de apoyo concretas (sustituyen al genérico "Soporte") ---
+      if (m.ability === 'Intimidate') tags.push({ label: 'Intimida', kind: 'sup' });
+      if (m.has(SET.fakeOut)) tags.push({ label: 'Fake Out', kind: 'sup' });
+      if (m.has(SET.redirection)) tags.push({ label: 'Redirección', kind: 'sup' });
+      if (m.has(SET.protectArea)) tags.push({ label: 'Prot. Área', kind: 'sup' });
+      if (m.has(SET.screens)) tags.push({ label: 'Pantallas', kind: 'sup' });
+      if (m.has(SET.allySupport)) tags.push({ label: 'Apoyo Aliado', kind: 'sup' });
+      if (m.has(SET.trickRoom)) tags.push({ label: 'Trick Room', kind: 'spe' });
+      if (m.has(SET.tailwind)) tags.push({ label: 'Tailwind', kind: 'spe' });
+      if (m.has(SET.speedCtrl)) tags.push({ label: 'Control Veloc.', kind: 'spe' });
+      if (m.has(SET.weatherMove) || WEATHER_ABILITIES.has(m.ability)) tags.push({ label: 'Clima', kind: 'sup' });
+      if (m.has(SET.terrainMove) || TERRAIN_ABILITIES.has(m.ability)) tags.push({ label: 'Terreno', kind: 'sup' });
+      if (m.has(SET.hazards)) tags.push({ label: 'Trampas', kind: 'sup' });
+      if (m.has(SET.hazardRemoval)) tags.push({ label: 'Antitrampas', kind: 'sup' });
+      if (m.has(SET.paralyze) || m.has(SET.burn) || m.has(SET.sleep)) tags.push({ label: 'Estados', kind: 'sup' });
+      if (m.has(SET.pivot)) tags.push({ label: 'Pivote', kind: 'sup' });
+
+      return { name: m.name, speciesId: m.p.speciesId, tags };
     });
 
     // ---- Arquetipo del equipo (puntuación ponderada) ----
@@ -413,9 +484,10 @@ export function TeamAnalysisView({ data }: Props) {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2 items-start">
+        {/* ── Resumen: puntuación + avisos ── */}
         {/* Puntuación por categorías (#3) */}
         <div className="panel p-4 animate-fade-in-up">
-          <h3 className="font-semibold mb-3">{t('Puntuación por categoría')}</h3>
+          <h3 className="font-semibold mb-3">📊 {t('Puntuación por categoría')}</h3>
           <div className="space-y-2.5">
             {(['speed', 'offense', 'defense', 'utility'] as const).map((k, idx) => (
               <div key={k}>
@@ -439,7 +511,7 @@ export function TeamAnalysisView({ data }: Props) {
 
         {/* Avisos */}
         <div className="panel p-4 animate-fade-in-up" style={{ animationDelay: '40ms' }}>
-          <h3 className="font-semibold mb-2 text-poke-pink">{t('Avisos')}</h3>
+          <h3 className="font-semibold mb-2 text-poke-pink">⚠ {t('Avisos')}</h3>
           {analysis.warnings.length === 0 ? (
             <p className="text-sm text-green-400">{t('Sin huecos evidentes. ¡Buen equipo!')} 🎉</p>
           ) : (
@@ -451,58 +523,96 @@ export function TeamAnalysisView({ data }: Props) {
           )}
         </div>
 
-        {/* Cobertura resumida */}
-        <div className="panel p-4 animate-fade-in-up" style={{ animationDelay: '120ms' }}>
-          <h3 className="font-semibold mb-2">{t('Cobertura de Tipos')}</h3>
-          <div className="text-sm mb-2">
-            <div className="text-gray-400 mb-1">{t('Debilidades compartidas (2+):')}</div>
-            <div className="flex flex-wrap gap-1.5">
-              {analysis.weakByType.length === 0 ? <span className="text-green-400 text-xs">{t('Ninguna')}</span> :
-                analysis.weakByType.map(({ type, count }, i) => (
-                  <span key={type} className={`pop-in type-${type.toLowerCase()} px-2 py-0.5 rounded text-xs font-medium ${count >= 3 ? 'ring-2 ring-red-400' : ''}`} style={{ animationDelay: `${i * 40}ms` }}>{type} ×{count}</span>
-                ))}
-            </div>
-          </div>
-          <div className="text-sm mb-2">
-            <div className="text-gray-400 mb-1">{t('Tipos que nadie resiste:')}</div>
-            <div className="flex flex-wrap gap-1.5">
-              {analysis.unresisted.length === 0 ? <span className="text-green-400 text-xs">{t('Ninguno')} 🎉</span> :
-                analysis.unresisted.map((type, i) => (
-                  <span key={type} className={`pop-in type-${type.toLowerCase()} px-2 py-0.5 rounded text-xs font-medium opacity-80`} style={{ animationDelay: `${i * 40}ms` }}>{type}</span>
-                ))}
-            </div>
-          </div>
-          <div className="text-sm">
-            <div className="text-gray-400 mb-1">{t('Huecos ofensivos:')}</div>
-            <div className="flex flex-wrap gap-1.5">
-              {analysis.offGaps.length === 0 ? <span className="text-green-400 text-xs">{t('Ninguno')} 🎉</span> :
-                analysis.offGaps.map((type, i) => (
-                  <span key={type} className={`pop-in type-${type.toLowerCase()} px-2 py-0.5 rounded text-xs font-medium opacity-80`} style={{ animationDelay: `${i * 40}ms` }}>{type}</span>
-                ))}
-            </div>
-          </div>
-        </div>
-
+        {/* ── Composición del equipo ── */}
         {/* Roles */}
-        <div className="panel p-4 animate-fade-in-up" style={{ animationDelay: '160ms' }}>
-          <h3 className="font-semibold mb-2">{t('Roles')}</h3>
-          <div className="space-y-1.5">
+        <div className="panel p-4 lg:col-span-2 animate-fade-in-up" style={{ animationDelay: '80ms' }}>
+          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <h3 className="font-semibold">🧩 {t('Roles')}</h3>
+            <div className="flex flex-wrap gap-2">
+              {(Object.keys(ROLE_KIND_LABEL) as RoleKind[]).map((k) => (
+                <span key={k} className="inline-flex items-center gap-1 text-[10px] text-gray-400">
+                  <span className={`w-2.5 h-2.5 rounded-sm border ${ROLE_KIND_CLASS[k]}`} />
+                  {t(ROLE_KIND_LABEL[k])}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-x-6 gap-y-2">
             {analysis.roles.map((r, i) => (
-              <div key={i} className="flex items-center gap-2 animate-fade-in-up" style={{ animationDelay: `${i * 50}ms` }}>
-                <PokemonSprite speciesId={r.speciesId} className="w-7 h-7 object-contain shrink-0" />
-                <span className="text-sm w-28 truncate">{r.name}</span>
+              <div key={i} className="flex items-start gap-2 animate-fade-in-up py-1 border-t border-poke-accent/15 first:border-0 sm:[&:nth-child(2)]:border-0" style={{ animationDelay: `${i * 50}ms` }}>
+                <PokemonSprite speciesId={r.speciesId} className="w-7 h-7 object-contain shrink-0 mt-0.5" />
+                <span className="text-sm w-24 truncate shrink-0 mt-1">{r.name}</span>
                 <div className="flex flex-wrap gap-1">
-                  {r.roles.length === 0 ? <span className="text-xs text-gray-500">—</span> :
-                    r.roles.map((role) => <span key={role} className="text-[10px] px-1.5 py-0.5 rounded bg-poke-accent/60 text-gray-100">{t(role)}</span>)}
+                  {r.tags.length === 0 ? <span className="text-xs text-gray-500 mt-1">—</span> :
+                    r.tags.map((tag) => (
+                      <span key={tag.label} className={`text-[10px] px-1.5 py-0.5 rounded border ${ROLE_KIND_CLASS[tag.kind]}`}>{t(tag.label)}</span>
+                    ))}
                 </div>
               </div>
             ))}
           </div>
         </div>
 
+        {/* ── Análisis de tipos y utilidad ── */}
+        {/* Cobertura resumida */}
+        <div className="panel p-4 lg:col-span-2 animate-fade-in-up" style={{ animationDelay: '120ms' }}>
+          <h3 className="font-semibold mb-3">🛡️ {t('Cobertura de Tipos')}</h3>
+          <div className="grid sm:grid-cols-3 gap-4 text-sm">
+            <div>
+              <div className="text-gray-400 mb-1.5">{t('Debilidades compartidas (2+):')}</div>
+              <div className="flex flex-wrap gap-1.5">
+                {analysis.weakByType.length === 0 ? <span className="text-green-400 text-xs">{t('Ninguna')}</span> :
+                  analysis.weakByType.map(({ type, count }, i) => (
+                    <span key={type} className={`pop-in type-${type.toLowerCase()} px-2 py-0.5 rounded text-xs font-medium ${count >= 3 ? 'ring-2 ring-red-400' : ''}`} style={{ animationDelay: `${i * 40}ms` }}>{type} ×{count}</span>
+                  ))}
+              </div>
+            </div>
+            <div>
+              <div className="text-gray-400 mb-1.5">{t('Tipos que nadie resiste:')}</div>
+              <div className="flex flex-wrap gap-1.5">
+                {analysis.unresisted.length === 0 ? <span className="text-green-400 text-xs">{t('Ninguno')} 🎉</span> :
+                  analysis.unresisted.map((type, i) => (
+                    <span key={type} className={`pop-in type-${type.toLowerCase()} px-2 py-0.5 rounded text-xs font-medium opacity-80`} style={{ animationDelay: `${i * 40}ms` }}>{type}</span>
+                  ))}
+              </div>
+            </div>
+            <div>
+              <div className="text-gray-400 mb-1.5">{t('Huecos ofensivos:')}</div>
+              <div className="flex flex-wrap gap-1.5">
+                {analysis.offGaps.length === 0 ? <span className="text-green-400 text-xs">{t('Ninguno')} 🎉</span> :
+                  analysis.offGaps.map((type, i) => (
+                    <span key={type} className={`pop-in type-${type.toLowerCase()} px-2 py-0.5 rounded text-xs font-medium opacity-80`} style={{ animationDelay: `${i * 40}ms` }}>{type}</span>
+                  ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Utilidad */}
+        <div className="panel p-4 lg:col-span-2 animate-fade-in-up" style={{ animationDelay: '160ms' }}>
+          <h3 className="font-semibold mb-2">🔧 {t('Utilidad y Control')}</h3>
+          <div className="grid sm:grid-cols-2 gap-x-6">
+            <div>
+              <UtilRow label={t('Fake Out')} mons={analysis.fakeOut} />
+              <UtilRow label={t('Redirección')} mons={analysis.redirection} />
+              <UtilRow label={t('Protección de Área')} mons={analysis.protectArea} />
+              <UtilRow label={t('Intimidación')} mons={analysis.intimidate} />
+              <UtilRow label={t('Apoyo a Aliado')} mons={analysis.allySupport} />
+            </div>
+            <div>
+              <UtilRow label={t('Tailwind')} mons={analysis.tailwind} />
+              <UtilRow label={t('Trick Room')} mons={analysis.trickRoom} />
+              <UtilRow label={t('Ralentizar')} mons={analysis.speedCtrl} />
+              <UtilRow label={t('Clima')} mons={analysis.weatherSetters} />
+              <UtilRow label={t('Terreno')} mons={analysis.terrainSetters} />
+            </div>
+          </div>
+        </div>
+
+        {/* ── Sinergias y contexto del meta ── */}
         {/* Sinergias (#6) */}
         <div className="panel p-4 lg:col-span-2 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
-          <h3 className="font-semibold mb-2">{t('Sinergias')}</h3>
+          <h3 className="font-semibold mb-2">✨ {t('Sinergias')}</h3>
           {analysis.synergies.length === 0 && analysis.antiSynergies.length === 0 ? (
             <p className="text-sm text-gray-500">{t('No se detectaron sinergias de habilidad notables.')}</p>
           ) : (
@@ -519,7 +629,7 @@ export function TeamAnalysisView({ data }: Props) {
 
         {/* Amenazas del meta (#1) */}
         <div className="panel p-4 lg:col-span-2 animate-fade-in-up" style={{ animationDelay: '240ms' }}>
-          <h3 className="font-semibold mb-1">{t('Amenazas del meta')}</h3>
+          <h3 className="font-semibold mb-1">🎯 {t('Amenazas del meta')}</h3>
           <p className="text-xs text-gray-500 mb-3">
             {t('Pokémon muy usados que tu equipo ni resiste ni golpea supereficaz.')}
             {meta?.month && <span> · {meta.month}</span>}
@@ -541,27 +651,6 @@ export function TeamAnalysisView({ data }: Props) {
               ))}
             </div>
           )}
-        </div>
-
-        {/* Utilidad */}
-        <div className="panel p-4 lg:col-span-2 animate-fade-in-up" style={{ animationDelay: '280ms' }}>
-          <h3 className="font-semibold mb-2">{t('Utilidad y Control')}</h3>
-          <div className="grid sm:grid-cols-2 gap-x-6">
-            <div>
-              <UtilRow label={t('Fake Out')} mons={analysis.fakeOut} />
-              <UtilRow label={t('Redirección')} mons={analysis.redirection} />
-              <UtilRow label={t('Protección de Área')} mons={analysis.protectArea} />
-              <UtilRow label={t('Intimidación')} mons={analysis.intimidate} />
-              <UtilRow label={t('Apoyo a Aliado')} mons={analysis.allySupport} />
-            </div>
-            <div>
-              <UtilRow label={t('Tailwind')} mons={analysis.tailwind} />
-              <UtilRow label={t('Trick Room')} mons={analysis.trickRoom} />
-              <UtilRow label={t('Ralentizar')} mons={analysis.speedCtrl} />
-              <UtilRow label={t('Clima')} mons={analysis.weatherSetters} />
-              <UtilRow label={t('Terreno')} mons={analysis.terrainSetters} />
-            </div>
-          </div>
         </div>
       </div>
     </div>
