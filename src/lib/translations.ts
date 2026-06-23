@@ -10,6 +10,13 @@ export const TRANSLATIONS: Record<string, string> = {
   Cobertura: 'Coverage',
   Calculadora: 'Calculator',
   'Análisis': 'Analysis',
+  'Menú': 'Menu',
+  'Página no encontrada': 'Page not found',
+  'La página que buscas no existe o se ha movido.': "The page you're looking for doesn't exist or has moved.",
+  'Volver al Constructor': 'Back to Builder',
+  'Hueco vacío': 'Empty slot',
+  'posición': 'position',
+  'Usa las flechas para reordenar.': 'Use the arrow keys to reorder.',
 
   // ---- Análisis del Equipo ----
   'Análisis del Equipo': 'Team Analysis',
@@ -33,6 +40,52 @@ export const TRANSLATIONS: Record<string, string> = {
   'Redirección': 'Redirection',
   'Intimidación': 'Intimidate',
   'Recuperación': 'Recovery',
+
+  // ---- Análisis: arquetipo, puntuación, matriz, sinergias, amenazas ----
+  'Puntuación': 'Score',
+  'Puntuación por categoría': 'Score by category',
+  Velocidad: 'Speed',
+  'Cobertura ofensiva': 'Offensive coverage',
+  'Solidez defensiva': 'Defensive solidity',
+  Utilidad: 'Utility',
+  Tailwind: 'Tailwind',
+  'Clima / Terreno': 'Weather / Terrain',
+  Hiperofensivo: 'Hyper Offense',
+  Equilibrado: 'Balanced',
+  'Tipos que nadie resiste:': 'Types nobody resists:',
+  Sinergias: 'Synergies',
+  'No se detectaron sinergias de habilidad notables.': 'No notable ability synergies detected.',
+  'Amenazas del meta': 'Meta threats',
+  'Pokémon muy usados que tu equipo ni resiste ni golpea supereficaz.':
+    "Heavily used Pokémon your team neither resists nor hits super-effectively.",
+  'Cargando datos del meta…': 'Loading meta data…',
+  'Tu equipo tiene respuesta para las amenazas más usadas. 🎉':
+    'Your team has an answer to the most-used threats. 🎉',
+  'aprovecha el clima': 'abuses the weather',
+  'Dos climas distintos se anulan entre sí:': 'Two different weathers cancel each other out:',
+  'Terreno Psíquico': 'Psychic Terrain',
+  'bloquea prioridad rival': 'blocks opposing priority',
+  'Terreno Eléctrico': 'Electric Terrain',
+  'Dos terrenos distintos se anulan entre sí.': 'Two different terrains cancel each other out.',
+  'presión sobre el ataque rival': 'pressures the opponent’s Attack',
+  'protege a tus frágiles': 'shields your frail attackers',
+  Sol: 'Sun',
+  Lluvia: 'Rain',
+  Arena: 'Sand',
+  Nieve: 'Snow',
+
+  // ---- Avisos (texto completo) ----
+  'Sin control de velocidad (Tailwind, Trick Room, baja-velocidades).':
+    'No speed control (Tailwind, Trick Room, speed-lowering moves).',
+  'Sin movimientos de prioridad.': 'No priority moves.',
+  'Sin redirección ni protección de área (Follow Me, Vasta Guardia…).':
+    'No redirection or spread protection (Follow Me, Wide Guard…).',
+  'Sin Fake Out (presión de retroceso en dobles).': 'No Fake Out (flinch pressure in doubles).',
+  'Ningún atacante físico.': 'No physical attacker.',
+  'Ningún atacante especial.': 'No special attacker.',
+  'Nadie lleva Protección: casi todos los equipos VGC la usan.':
+    'Nobody runs Protect: nearly every VGC team uses it.',
+  'Muchos Pokémon lentos y sin Trick Room.': 'Many slow Pokémon and no Trick Room.',
   'Equipo activo:': 'Active team:',
   '+ Nuevo': '+ New',
   Renombrar: 'Rename',

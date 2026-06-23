@@ -207,7 +207,7 @@ export function DamageCalcView({ data }: DamageCalcViewProps) {
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px_minmax(0,1fr)] items-start">
         {/* Tu equipo */}
         <div className="panel p-4">
-          <h3 className="font-semibold mb-3 text-poke-gold">{t('Tu Pokémon')}</h3>
+          <h3 className="font-semibold mb-3 text-poke-pink">{t('Tu Pokémon')}</h3>
           <div className="grid grid-cols-3 gap-2 mb-3">
             {(activeTeam?.pokemon ?? []).map((p, i) => (
               <button
@@ -216,7 +216,7 @@ export function DamageCalcView({ data }: DamageCalcViewProps) {
                 disabled={!p.speciesId}
                 onClick={() => { setAttackerSlot(i); setYourBoosts({ atk: 0, def: 0, spa: 0, spd: 0, spe: 0 }); setYourStatus(''); }}
                 className={`p-2 rounded-lg border transition-colors flex flex-col items-center gap-1 ${
-                  attackerSlot === i ? 'border-poke-gold bg-poke-gold/10' : 'border-poke-accent/30 hover:border-poke-accent'
+                  attackerSlot === i ? 'border-poke-pink bg-poke-pink/10' : 'border-poke-accent/30 hover:border-poke-accent'
                 } ${!p.speciesId ? 'opacity-30 cursor-not-allowed' : ''}`}
               >
                 {p.speciesId ? (
@@ -382,10 +382,10 @@ function FieldButton({ label, active, onClick, className = '' }: { label: string
       type="button"
       onClick={onClick}
       className={`relative overflow-hidden px-4 py-2 rounded-md text-xs border transition-all active:scale-95 whitespace-nowrap ${className} ${
-        active ? 'border-poke-gold text-white' : 'bg-poke-dark border-poke-accent text-gray-300 hover:bg-poke-accent/40'
+        active ? 'border-poke-pink text-white' : 'bg-poke-dark border-poke-accent text-gray-300 hover:bg-poke-accent/40'
       }`}
     >
-      <span className={`absolute inset-0 bg-poke-gold origin-left transition-transform duration-300 ease-out ${active ? 'scale-x-100' : 'scale-x-0'}`} />
+      <span className={`absolute inset-0 bg-poke-pink origin-left transition-transform duration-300 ease-out ${active ? 'scale-x-100' : 'scale-x-0'}`} />
       <span className="relative">{label}</span>
     </button>
   );
@@ -397,10 +397,10 @@ function Chip({ label, active, onClick, className = '', fromRight = false }: { l
       type="button"
       onClick={onClick}
       className={`relative overflow-hidden px-2.5 py-2 rounded-md text-xs border transition-all active:scale-95 ${className} ${
-        active ? 'border-poke-gold text-white' : 'bg-poke-dark border-poke-accent text-gray-300 hover:bg-poke-accent/40'
+        active ? 'border-poke-pink text-white' : 'bg-poke-dark border-poke-accent text-gray-300 hover:bg-poke-accent/40'
       }`}
     >
-      <span className={`absolute inset-0 bg-poke-gold transition-transform duration-300 ease-out ${fromRight ? 'origin-right' : 'origin-left'} ${active ? 'scale-x-100' : 'scale-x-0'}`} />
+      <span className={`absolute inset-0 bg-poke-pink transition-transform duration-300 ease-out ${fromRight ? 'origin-right' : 'origin-left'} ${active ? 'scale-x-100' : 'scale-x-0'}`} />
       <span className="relative">{label}</span>
     </button>
   );
@@ -464,7 +464,7 @@ function RivalEditor({ data, mon, onChange, hasMeta, onApplyMeta, field }: { dat
         <button
           type="button"
           onClick={onApplyMeta}
-          className="w-full px-3 py-2 rounded-lg bg-poke-gold/15 border border-poke-gold/40 text-poke-gold text-sm font-medium hover:bg-poke-gold/25 transition-colors"
+          className="w-full px-3 py-2 rounded-lg bg-poke-pink/15 border border-poke-pink/40 text-poke-pink text-sm font-medium hover:bg-poke-pink/25 transition-colors"
         >
           {t('⬇ Cargar set más usado (meta)')}
         </button>
