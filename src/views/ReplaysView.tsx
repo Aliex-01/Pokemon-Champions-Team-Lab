@@ -148,12 +148,8 @@ export function ReplaysView(_props: Props) {
 
   return (
     <div className="page-enter">
-      <div className="mb-4 flex items-center gap-3">
-        <span className="text-2xl">🎬</span>
-        <div>
-          <h2 className="text-2xl font-bold leading-tight">{t('Repeticiones')}</h2>
-          <p className="text-sm text-gray-400">{t('Importa repeticiones de Showdown y analiza tus resultados. Todo se guarda en tu navegador.')}</p>
-        </div>
+      <div className="mb-4">
+        <h2 className="text-2xl font-bold">{t('Repeticiones')}</h2>
       </div>
 
       <div className="panel p-4 mb-4 border-poke-pink/20">
