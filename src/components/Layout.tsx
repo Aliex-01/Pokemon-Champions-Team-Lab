@@ -6,6 +6,37 @@ import { useLang } from '../lib/i18n';
 import { Dropdown } from './Dropdown';
 import { Modal } from './Modal';
 
+// Banderas en SVG (los emojis de bandera no se renderizan en Chrome/Edge sobre Windows).
+// Misma caja para ambas (w-6 h-4); preserveAspectRatio="none" las estira para
+// llenarla sin huecos, ya que España (3:2) y Reino Unido (2:1) no comparten proporción.
+const flagClass = 'w-6 h-4 rounded-[2px] shrink-0 ring-1 ring-black/30';
+
+function FlagES() {
+  return (
+    <svg viewBox="0 0 3 2" preserveAspectRatio="none" className={flagClass} aria-label="Español">
+      <rect width="3" height="2" fill="#c60b1e" />
+      <rect width="3" height="1" y="0.5" fill="#ffc400" />
+    </svg>
+  );
+}
+
+function FlagGB() {
+  return (
+    <svg viewBox="0 0 60 30" preserveAspectRatio="none" className={flagClass} aria-label="English">
+      <clipPath id="flag-gb-s"><path d="M0,0 v30 h60 v-30 z" /></clipPath>
+      {/* Contracambio: limita las diagonales rojas a cuadrantes alternos. */}
+      <clipPath id="flag-gb-t"><path d="M30,15 h30 v15 z v15 h-30 z h-30 v-15 z v-15 h30 z" /></clipPath>
+      <g clipPath="url(#flag-gb-s)">
+        <path d="M0,0 v30 h60 v-30 z" fill="#012169" />
+        <path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" strokeWidth="6" />
+        <path d="M0,0 L60,30 M60,0 L0,30" clipPath="url(#flag-gb-t)" stroke="#C8102E" strokeWidth="4" />
+        <path d="M30,0 v30 M0,15 h60" stroke="#fff" strokeWidth="10" />
+        <path d="M30,0 v30 M0,15 h60" stroke="#C8102E" strokeWidth="6" />
+      </g>
+    </svg>
+  );
+}
+
 const NAV_ITEMS = [
   { to: '/', label: 'Equipo', end: true },
   { to: '/speed', label: 'Speed Tier' },
@@ -92,9 +123,10 @@ export function Layout() {
               type="button"
               onClick={toggle}
               title={lang === 'es' ? 'Switch to English' : 'Cambiar a Español'}
-              className="md:ml-1 px-3 py-2 rounded-lg text-sm font-medium border border-poke-accent text-gray-200 hover:bg-poke-accent/40 hover:border-poke-pink/60 transition-all duration-150 active:scale-95 min-w-[68px] text-center"
+              className="md:ml-1 px-3 py-2 rounded-lg text-sm font-medium border border-poke-accent text-gray-200 hover:bg-poke-accent/40 hover:border-poke-pink/60 transition-all duration-150 active:scale-95 min-w-[68px] inline-flex items-center justify-center gap-2"
             >
-              🌐 {lang.toUpperCase()}
+              {lang === 'es' ? <FlagES /> : <FlagGB />}
+              {lang.toUpperCase()}
             </button>
           </nav>
         </div>

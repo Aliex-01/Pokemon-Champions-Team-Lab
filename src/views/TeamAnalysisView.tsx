@@ -214,15 +214,49 @@ export function TeamAnalysisView({ data }: Props) {
       return { name: m.name, speciesId: m.p.speciesId, roles: r };
     });
 
-    // ---- Arquetipo del equipo ----
+    // ---- Arquetipo del equipo (puntuación ponderada) ----
+    // En vez de elegir por prioridad fija (Trick Room > Tailwind > …), puntuamos
+    // cada plan según las señales reales del equipo y gana el de mayor peso. Así,
+    // un equipo cuyo eje es Tailwind pero lleva Trick Room de apoyo se etiqueta
+    // como Tailwind, dejando Trick Room como arquetipo secundario.
     const avgSpe = mons.length ? mons.reduce((s, m) => s + m.sp.baseStats.spe, 0) / mons.length : 0;
     const slowMons = mons.filter((m) => m.sp.baseStats.spe <= 60);
-    let archetype: { key: string; icon: string };
-    if (trickRoom.length >= 1) archetype = { key: 'Trick Room', icon: '⧗' };
-    else if (tailwind.length >= 1) archetype = { key: 'Tailwind', icon: '≋' };
-    else if (weatherSetters.length >= 1 && weatherSetters.length + terrainSetters.length >= 2) archetype = { key: 'Clima / Terreno', icon: '☀' };
-    else if (avgSpe >= 95) archetype = { key: 'Hiperofensivo', icon: '⚔' };
-    else archetype = { key: 'Equilibrado', icon: '🛡' };
+    const fastMons = mons.filter((m) => m.sp.baseStats.spe >= 80);
+
+    // Climas/terrenos presentes y cuántos Pokémon los aprovechan (habilidad abusadora).
+    const teamWeathers = new Set<string>();
+    for (const m of mons) {
+      const w = WEATHER_BY_ABILITY[m.ability]; if (w) teamWeathers.add(w);
+      for (const id of m.moveIds) if (WEATHER_BY_MOVE[id]) teamWeathers.add(WEATHER_BY_MOVE[id]);
+    }
+    const wtSetters = weatherSetters.length + terrainSetters.length;
+    const wtAbusers = mons.filter((m) => [...teamWeathers].some((w) => WEATHER_ABUSERS[w]?.includes(m.ability))).length;
+
+    // Puntuación de cada plan (0 = no aplica). Pesos calibrados a mano: el nº de
+    // inductores pesa, y se premia/penaliza según el equipo encaje con el plan
+    // (lentos para Trick Room, rápidos para Tailwind/Hiperofensivo, abusadores
+    // para Clima/Terreno).
+    const archScores: { key: string; icon: string; score: number }[] = [];
+    if (trickRoom.length)
+      archScores.push({ key: 'Trick Room', icon: '⧗',
+        score: 12 * trickRoom.length + 5 * slowMons.length - 0.2 * Math.max(0, avgSpe - 60) });
+    if (tailwind.length)
+      archScores.push({ key: 'Tailwind', icon: '≋',
+        score: 12 * tailwind.length + 4 * fastMons.length + 0.15 * Math.max(0, avgSpe - 70) });
+    if (wtSetters)
+      archScores.push({ key: 'Clima / Terreno', icon: '☀',
+        score: 9 * wtSetters + 6 * wtAbusers });
+    archScores.push({ key: 'Hiperofensivo', icon: '⚔',
+      score: (avgSpe >= 95 ? 10 : 0) + 4 * fastMons.length + 3 * scarf.length + 3 * priority.length - 5 * slowMons.length });
+    archScores.push({ key: 'Equilibrado', icon: '🛡', score: 9 });
+
+    archScores.sort((a, b) => b.score - a.score);
+    const archetype = { key: archScores[0].key, icon: archScores[0].icon };
+    // Plan secundario: otro arquetipo de estrategia (no Equilibrado) con peso
+    // relevante. Se muestra como "+ apoyo" junto al principal.
+    const STRATEGY_KEYS = ['Trick Room', 'Tailwind', 'Clima / Terreno'];
+    const second = archScores.slice(1).find((a) => STRATEGY_KEYS.includes(a.key) && a.score >= 12);
+    const archetypeSecondary = second ? { key: second.key, icon: second.icon } : null;
 
     // ---- Sinergias y anti-sinergias de habilidad ----
     const synergies: string[] = [];
@@ -292,7 +326,7 @@ export function TeamAnalysisView({ data }: Props) {
     const scores = { speed: speedScore, offense: offenseScore, defense: defenseScore, utility: utilityScore };
     const total = speedScore + offenseScore + defenseScore + utilityScore;
 
-    return { mons, weakByType, unresisted, offGaps, tailwind, trickRoom, speedCtrl, redirection, fakeOut, recovery, priority, protectArea, allySupport, weatherSetters, terrainSetters, intimidate, scarf, roles, warnings, archetype, synergies, antiSynergies, scores, total, avgSpe };
+    return { mons, weakByType, unresisted, offGaps, tailwind, trickRoom, speedCtrl, redirection, fakeOut, recovery, priority, protectArea, allySupport, weatherSetters, terrainSetters, intimidate, scarf, roles, warnings, archetype, archetypeSecondary, synergies, antiSynergies, scores, total, avgSpe };
   }, [activeTeam, data, tc, t]);
 
   // ---- Amenazas del meta (#1) ----
@@ -360,6 +394,18 @@ export function TeamAnalysisView({ data }: Props) {
         >
           {analysis.archetype.icon} {t(analysis.archetype.key)}
         </span>
+        {analysis.archetypeSecondary && (
+          <span
+            key={analysis.archetypeSecondary.key}
+            className="pop-in inline-flex items-center gap-1.5 pl-1 pr-3 py-1 rounded-full bg-poke-accent/30 text-sm font-medium border border-dashed border-poke-accent text-gray-300"
+            title={t('Plan secundario del equipo')}
+          >
+            <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-poke-pink/20 text-poke-pink leading-none">
+              {t('apoyo')}
+            </span>
+            {analysis.archetypeSecondary.icon} {t(analysis.archetypeSecondary.key)}
+          </span>
+        )}
         <span className="ml-auto text-sm text-gray-400">{t('Puntuación')}</span>
         <span className={`text-2xl font-bold ${analysis.total >= 75 ? 'text-green-400' : analysis.total >= 50 ? 'text-yellow-400' : 'text-red-400'}`}>
           <CountUp value={analysis.total} /><span className="text-sm text-gray-500">/100</span>
