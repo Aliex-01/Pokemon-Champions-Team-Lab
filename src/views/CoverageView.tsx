@@ -30,6 +30,24 @@ function applyAbility(mult: number, attackType: string, ability: string): number
   return mult;
 }
 
+// Habilidades "-ate" que cambian el tipo de los ataques (ofensiva).
+// `from: '*'` => convierte cualquier tipo (Normalize).
+const ABILITY_MOVE_TYPE: Record<string, { from: string; to: string }> = {
+  Pixilate: { from: 'Normal', to: 'Fairy' },
+  Refrigerate: { from: 'Normal', to: 'Ice' },
+  Aerilate: { from: 'Normal', to: 'Flying' },
+  Galvanize: { from: 'Normal', to: 'Electric' },
+  Dragonize: { from: 'Normal', to: 'Dragon' }, // Feraligatr-Mega (Champions)
+  Normalize: { from: '*', to: 'Normal' },
+};
+
+// Aplica la habilidad "-ate" del Pokémon al tipo de uno de sus movimientos.
+function abilityMoveType(moveType: string, ability: string): string {
+  const conv = ABILITY_MOVE_TYPE[ability];
+  if (conv && (conv.from === '*' || conv.from === moveType)) return conv.to;
+  return moveType;
+}
+
 function effLabel(m: number): string {
   if (m === 0) return '0';
   if (m === 0.25) return '/4';
@@ -71,7 +89,8 @@ export function CoverageView({ data }: CoverageViewProps) {
               .filter(Boolean)
               .map((id) => data.moveData?.[id])
               .filter((md): md is NonNullable<typeof md> => !!md && md.category !== 'Status')
-              .map((md) => md.type)
+              // Aplica habilidades "-ate" (Pixilate, etc.): un ataque Normal pasa a su tipo real.
+              .map((md) => abilityMoveType(md.type, p.ability))
           ),
         ];
         return { name: p.speciesName, speciesId: p.speciesId, ability: p.ability, types: sp?.types ?? [], moveTypes };

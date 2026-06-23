@@ -112,7 +112,14 @@ export function calcMove(
     // (Skill Link → 5) sea correcto; el resto del daño usa la habilidad del Pokémon.
     const moveOpts: Record<string, unknown> = { isCrit: field.crit, ability: attacker.ability || undefined };
 
+    // @smogon/calc identifica movimientos con lógica de tipo dinámica (Weather
+    // Ball, Techno Blast, Multi-Attack…) por `move.originalName`, que fija al
+    // string exacto que recibe el constructor. Si le pasamos el id ("weatherball")
+    // esa comprobación falla y el tipo no cambia con el clima. Reconstruimos con
+    // el nombre canónico ("Weather Ball") para que esas mecánicas funcionen.
     let move = new Move(gen, moveId, moveOpts as never);
+    const moveName = move.name || moveId;
+    if (moveName !== moveId) move = new Move(gen, moveName, moveOpts as never);
     const overrides: Record<string, unknown> = {};
 
     // Dragonize (Feraligatr-Mega): movimientos Normal → Dragón (+1.2x potencia).
@@ -130,7 +137,7 @@ export function calcMove(
     }
 
     if (Object.keys(overrides).length) {
-      move = new Move(gen, moveId, { ...moveOpts, overrides } as never);
+      move = new Move(gen, moveName, { ...moveOpts, overrides } as never);
     }
 
     // Mega Sol (Meganium-Mega): sus ataques actúan como con Sol.
