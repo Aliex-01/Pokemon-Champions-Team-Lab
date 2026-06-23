@@ -55,7 +55,7 @@ export function Dropdown({
               <button
                 type="button"
                 className={`w-full text-left px-3 py-2 hover:bg-poke-accent/50 ${
-                  o === value ? 'bg-poke-gold/20 text-poke-gold' : ''
+                  o === value ? 'bg-poke-pink/20 text-poke-pink' : ''
                 }`}
                 onClick={() => { onChange(o); setOpen(false); }}
               >

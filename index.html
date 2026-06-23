@@ -1,10 +1,38 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#1a1a2e" />
+
+    <!-- Adelanta el handshake con los CDNs de sprites para que carguen antes -->
+    <link rel="preconnect" href="https://play.pokemonshowdown.com" crossorigin />
+    <link rel="preconnect" href="https://raw.githubusercontent.com" crossorigin />
+
     <title>Pokémon Champions Team Lab</title>
+    <meta
+      name="description"
+      content="Constructor y analizador de equipos de Pokémon Champions (VGC 2026, Reg M-B, dobles): constructor con EVs, Speed Tier, calculadora de daño, builds del meta y cobertura de tipos."
+    />
+
+    <!-- Open Graph (Discord / WhatsApp / Facebook) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Pokémon Champions Team Lab" />
+    <meta
+      property="og:description"
+      content="Construye y analiza equipos de Pokémon Champions: EVs, Speed Tier, calculadora de daño, builds del meta y cobertura."
+    />
+    <meta property="og:image" content="/favicon.svg" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Pokémon Champions Team Lab" />
+    <meta
+      name="twitter:description"
+      content="Construye y analiza equipos de Pokémon Champions: EVs, Speed Tier, calculadora de daño, builds del meta y cobertura."
+    />
+    <meta name="twitter:image" content="/favicon.svg" />
   </head>
   <body>
     <div id="root"></div>

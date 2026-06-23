@@ -496,7 +496,7 @@ export function SpeedTierView({ data }: SpeedTierProps) {
                 <PokemonSprite speciesId={s.speciesId} className="w-8 h-8 object-contain shrink-0" />
                 <div className="min-w-0 text-xs">
                   <div className="font-medium truncate">
-                    <span className="text-gray-500 font-mono">#{s.position}</span> {t(s.name)}<span className="text-gray-400">{s.scarfNote && ` ${t(s.scarfNote.trim())}`}</span> <span className="font-mono text-poke-gold">{s.speed}</span>
+                    <span className="text-gray-500 font-mono">#{s.position}</span> {t(s.name)}<span className="text-gray-400">{s.scarfNote && ` ${t(s.scarfNote.trim())}`}</span> <span className="font-mono text-poke-pink">{s.speed}</span>
                   </div>
                   <div className="text-gray-400">
                     <span className="text-green-400">{s.faster} {t('supera')}</span>
@@ -526,7 +526,7 @@ export function SpeedTierView({ data }: SpeedTierProps) {
               <tr
                 key={g.key}
                 id={rowId(g.key)}
-                className={`border-t border-poke-accent/30 ${g.hasTeam ? 'bg-poke-gold/15 border-l-4 border-l-poke-gold' : i % 2 ? 'bg-white/[0.02]' : ''}`}
+                className={`border-t border-poke-accent/30 ${g.hasTeam ? 'bg-poke-pink/15 border-l-4 border-l-poke-pink' : i % 2 ? 'bg-white/[0.02]' : ''}`}
               >
                 <td className="px-3 py-1.5 text-gray-400 align-top">{i + 1}</td>
                 <td className="px-3 py-1.5">
@@ -537,7 +537,7 @@ export function SpeedTierView({ data }: SpeedTierProps) {
                         <div className="min-w-0">
                           <div className="font-medium truncate flex items-center gap-1.5">
                             {t(e.name)}
-                            {e.isTeam && <span className="text-[10px] text-poke-gold">{t('(equipo)')}</span>}
+                            {e.isTeam && <span className="text-[10px] text-poke-pink">{t('(equipo)')}</span>}
                           </div>
                           <div className="flex gap-1 mt-0.5">
                             {e.types.map((t) => (
@@ -557,7 +557,7 @@ export function SpeedTierView({ data }: SpeedTierProps) {
                 <td className="px-3 py-1.5 align-top">
                   <div className="h-2 rounded-full bg-black/30 overflow-hidden mt-1.5">
                     <div
-                      className={`h-full rounded-full transition-[width] duration-700 ease-out ${g.hasTeam ? 'bg-poke-gold' : 'bg-poke-accent'}`}
+                      className={`h-full rounded-full transition-[width] duration-700 ease-out ${g.hasTeam ? 'bg-poke-pink' : 'bg-poke-accent'}`}
                       style={{
                         width: `${barsReady ? (g.speed / maxSpeed) * 100 : 0}%`,
                         transitionDelay: barsReady ? `${Math.min(i * 12, 400)}ms` : '0ms',
@@ -567,7 +567,7 @@ export function SpeedTierView({ data }: SpeedTierProps) {
                   <div className={`text-[10px] mt-0.5 truncate ${BENCHMARK_COLOR[g.items[0].variant] ?? 'text-gray-500'}`}>
                     {[...new Set(g.items.map((e) => t(e.variant)))].join(' / ')}
                     {g.items[0].boostAbility && (
-                      <span className="text-poke-gold"> · {localizeName('abilities', g.items[0].boostAbility, lang)}</span>
+                      <span className="text-poke-pink"> · {localizeName('abilities', g.items[0].boostAbility, lang)}</span>
                     )}
                     {g.items[0].boostItem && (
                       <span className="text-sky-400"> · {localizeName('items', g.items[0].boostItem, lang)}</span>
@@ -649,11 +649,11 @@ function ToggleChip({ label, active, onClick, className = '' }: { label: string;
       onClick={onClick}
       className={`relative overflow-hidden px-3 py-1.5 rounded-lg text-sm border transition-all active:scale-95 ${className} ${
         active
-          ? 'border-poke-gold text-white'
+          ? 'border-poke-pink text-white'
           : 'bg-poke-dark border-poke-accent text-gray-300 hover:bg-poke-accent/40'
       }`}
     >
-      <span className={`absolute inset-0 bg-poke-gold origin-left transition-transform duration-300 ease-out ${active ? 'scale-x-100' : 'scale-x-0'}`} />
+      <span className={`absolute inset-0 bg-poke-pink origin-left transition-transform duration-300 ease-out ${active ? 'scale-x-100' : 'scale-x-0'}`} />
       <span className="relative">{label}</span>
     </button>
   );

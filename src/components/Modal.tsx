@@ -27,7 +27,7 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
         className="panel w-full max-w-sm p-5 shadow-2xl"
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <h3 className="text-lg font-bold text-poke-gold mb-4">{title}</h3>
+        <h3 className="text-lg font-bold text-poke-pink mb-4">{title}</h3>
         {children}
       </div>
     </div>

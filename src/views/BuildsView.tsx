@@ -137,7 +137,7 @@ export function BuildsView({ data }: BuildsViewProps) {
         <p className="text-gray-400">{t('Cargando estadísticas…')}</p>
       ) : !builds ? (
         <div className="panel p-4 text-gray-400">
-          {t('No hay datos de builds. Ejecuta')} <code className="text-poke-gold">npm run generate-data</code>.
+          {t('No hay datos de builds. Ejecuta')} <code className="text-poke-pink">npm run generate-data</code>.
         </div>
       ) : !activeTeam ? null : (
         <>
@@ -150,8 +150,8 @@ export function BuildsView({ data }: BuildsViewProps) {
                   onClick={() => setSelectedSlot(i)}
                   className={`panel p-2 flex flex-col items-center gap-1 transition-all active:scale-[0.98] hover:-translate-y-0.5 ${
                     selectedSlot === i
-                      ? 'border-poke-gold ring-2 ring-poke-gold/60 shadow-lg shadow-poke-gold/20'
-                      : 'hover:border-poke-gold/50'
+                      ? 'border-poke-pink ring-2 ring-poke-pink/60 shadow-lg shadow-poke-pink/20'
+                      : 'hover:border-poke-pink/50'
                   }`}
                 >
                   <PokemonSprite speciesId={p.speciesId} className="w-14 h-14 object-contain" />
@@ -183,7 +183,7 @@ export function BuildsView({ data }: BuildsViewProps) {
                 <PokemonSprite speciesId={slotMon.speciesId} className="w-16 h-16 object-contain" />
                 <div className="flex-1 min-w-0">
                   <h3 className="text-xl font-bold truncate">{slotMon.speciesName}</h3>
-                  <p className="text-poke-gold text-sm">
+                  <p className="text-poke-pink text-sm">
                     {buildId && rankById.has(buildId) && <span className="text-gray-400">#{rankById.get(buildId)} · </span>}
                     {build.usage}% {t('de uso')}
                   </p>
@@ -225,15 +225,15 @@ export function BuildsView({ data }: BuildsViewProps) {
                               type="button"
                               onClick={() => { setSelNature(s.nature); setSelEvs(s.evs); }}
                               className={`w-full flex justify-between items-center gap-2 px-2 py-1 rounded text-base ${
-                                sel ? 'bg-poke-gold/20 ring-1 ring-poke-gold/40' : 'hover:bg-poke-accent/30'
+                                sel ? 'bg-poke-pink/20 ring-1 ring-poke-pink/40' : 'hover:bg-poke-accent/30'
                               }`}
                             >
                               <span className="truncate">{localizeName('natures', s.nature, lang)} · {s.evs}</span>
                               <div className="flex items-center gap-2 shrink-0">
                                 <div className="w-20 h-2 bg-poke-dark rounded-full overflow-hidden">
-                                  <div className="h-full bg-poke-gold rounded-full grow-x" style={{ width: `${Math.min(100, s.pct)}%` }} />
+                                  <div className="h-full bg-poke-pink rounded-full grow-x" style={{ width: `${Math.min(100, s.pct)}%` }} />
                                 </div>
-                                <span className="text-poke-gold w-12 text-right font-mono text-sm">{s.pct}%</span>
+                                <span className="text-poke-pink w-12 text-right font-mono text-sm">{s.pct}%</span>
                               </div>
                             </button>
                           </li>
@@ -297,7 +297,7 @@ function PickSection({
               type="button"
               onClick={() => onPick(item.name)}
               className={`w-full flex justify-between items-center gap-2 px-2 py-1 rounded text-base transition-colors ${
-                isSelected(item.name) ? 'bg-poke-gold/20 ring-1 ring-poke-gold/40' : 'hover:bg-poke-accent/30'
+                isSelected(item.name) ? 'bg-poke-pink/20 ring-1 ring-poke-pink/40' : 'hover:bg-poke-accent/30'
               }`}
             >
               <span className="flex items-center gap-1.5 min-w-0">
@@ -306,9 +306,9 @@ function PickSection({
               </span>
               <div className="flex items-center gap-2 shrink-0">
                 <div className="w-20 h-2 bg-poke-dark rounded-full overflow-hidden">
-                  <div className="h-full bg-poke-gold rounded-full grow-x" style={{ width: `${Math.min(100, item.pct)}%` }} />
+                  <div className="h-full bg-poke-pink rounded-full grow-x" style={{ width: `${Math.min(100, item.pct)}%` }} />
                 </div>
-                <span className="text-poke-gold w-12 text-right font-mono text-sm">{item.pct}%</span>
+                <span className="text-poke-pink w-12 text-right font-mono text-sm">{item.pct}%</span>
               </div>
             </button>
           </li>

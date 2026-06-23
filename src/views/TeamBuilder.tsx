@@ -46,6 +46,19 @@ export function TeamBuilder({ data }: TeamBuilderProps) {
     setTimeout(() => setDropped(null), 350);
   };
 
+  // Reordenar con teclado cuando una tarjeta tiene el foco.
+  const onCardKeyDown = (e: React.KeyboardEvent, i: number) => {
+    // Solo si el foco está en la tarjeta misma, no en inputs/botones internos.
+    if (e.target !== e.currentTarget) return;
+    const last = activeTeam.pokemon.length - 1;
+    let to: number | null = null;
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') to = Math.max(0, i - 1);
+    else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') to = Math.min(last, i + 1);
+    else if (e.key === 'Home') to = 0;
+    else if (e.key === 'End') to = last;
+    if (to !== null) { e.preventDefault(); reorder(i, to); }
+  };
+
   return (
     <div className="page-enter">
       <div className="mb-6">
@@ -57,14 +70,18 @@ export function TeamBuilder({ data }: TeamBuilderProps) {
           <div
             key={`${activeTeam.id}-${mon.slotId}`}
             draggable
+            tabIndex={0}
+            role="button"
+            aria-label={`${mon.speciesName || t('Hueco vacío')} — ${t('posición')} ${i + 1}. ${t('Usa las flechas para reordenar.')}`}
             onDragStart={(e) => { setDragIndex(i); e.dataTransfer.effectAllowed = 'move'; }}
             onDragOver={(e) => { e.preventDefault(); if (dragIndex !== null) setOverIndex(i); }}
             onDragLeave={() => setOverIndex((cur) => (cur === i ? null : cur))}
             onDrop={(e) => { e.preventDefault(); if (dragIndex !== null) reorder(dragIndex, i); setDragIndex(null); setOverIndex(null); }}
             onDragEnd={() => { setDragIndex(null); setOverIndex(null); }}
-            className={`animate-fade-in-up transition-all cursor-grab active:cursor-grabbing ${
+            onKeyDown={(e) => onCardKeyDown(e, i)}
+            className={`animate-fade-in-up transition-all cursor-grab active:cursor-grabbing rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-poke-pink ${
               dragIndex === i ? 'opacity-40' : ''
-            } ${overIndex === i && dragIndex !== i ? 'ring-2 ring-poke-gold rounded-lg scale-105' : ''}`}
+            } ${overIndex === i && dragIndex !== i ? 'ring-2 ring-poke-pink scale-105' : ''}`}
             style={{ animationDelay: `${i * 40}ms` }}
           >
             {/* drop-pop en un elemento aparte para no reiniciar el fade-in de entrada */}

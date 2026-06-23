@@ -64,8 +64,8 @@ export function PokemonEditor({ data, pokemon, onUpdate, isActive, isSelected, o
         onClick={onSelect}
         className={`panel p-3 text-left w-full h-full transition-all active:scale-[0.98] hover:-translate-y-0.5 ${
           isSelected
-            ? 'border-poke-gold ring-2 ring-poke-gold/60 shadow-lg shadow-poke-gold/20'
-            : 'hover:border-poke-gold/50'
+            ? 'border-poke-pink ring-2 ring-poke-pink/60 shadow-lg shadow-poke-pink/20'
+            : 'hover:border-poke-pink/50'
         } ${pokemon.speciesId ? '' : isSelected ? 'border-dashed' : 'border-dashed opacity-60'}`}
       >
         {pokemon.speciesId ? (
@@ -203,14 +203,14 @@ export function PokemonEditor({ data, pokemon, onUpdate, isActive, isSelected, o
                 <div className="flex rounded-lg overflow-hidden border border-poke-accent text-xs">
                   <button
                     type="button"
-                    className={`px-3 py-1.5 ${evMode === 'champions' ? 'bg-poke-gold text-white' : 'bg-poke-dark hover:bg-poke-accent/40'}`}
+                    className={`px-3 py-1.5 ${evMode === 'champions' ? 'bg-poke-pink text-white' : 'bg-poke-dark hover:bg-poke-accent/40'}`}
                     onClick={() => switchEvMode('champions')}
                   >
                     {t('Stat Points')}
                   </button>
                   <button
                     type="button"
-                    className={`px-3 py-1.5 ${evMode === 'traditional' ? 'bg-poke-gold text-white' : 'bg-poke-dark hover:bg-poke-accent/40'}`}
+                    className={`px-3 py-1.5 ${evMode === 'traditional' ? 'bg-poke-pink text-white' : 'bg-poke-dark hover:bg-poke-accent/40'}`}
                     onClick={() => switchEvMode('traditional')}
                   >
                     {t('EVs clásicos')}
@@ -218,7 +218,7 @@ export function PokemonEditor({ data, pokemon, onUpdate, isActive, isSelected, o
                 </div>
                 <button
                   type="button"
-                  className="text-xs text-poke-gold"
+                  className="text-xs text-poke-pink"
                   onClick={() => onUpdate({
                     evs: { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 },
                   })}
@@ -506,7 +506,7 @@ function MoveSelector({
               <button
                 type="button"
                 className={`select-field flex items-center gap-2 text-left ${
-                  isEditing ? 'ring-2 ring-poke-gold border-poke-gold' : ''
+                  isEditing ? 'ring-2 ring-poke-pink border-poke-pink' : ''
                 } ${move ? '' : 'text-gray-400'}`}
                 onClick={() => setEditing(isEditing ? null : i)}
               >
@@ -558,7 +558,7 @@ function MoveSelector({
                 <button
                   key={c || 'all'}
                   type="button"
-                  className={`px-3 flex items-center transition-colors ${catFilter === c ? 'bg-poke-gold text-white' : 'bg-poke-dark hover:bg-poke-accent/40 text-gray-300'}`}
+                  className={`px-3 flex items-center transition-colors ${catFilter === c ? 'bg-poke-pink text-white' : 'bg-poke-dark hover:bg-poke-accent/40 text-gray-300'}`}
                   onClick={() => setCatFilter(c)}
                 >
                   {c ? t(CATEGORY_LABEL[c]) : t('Todas')}
@@ -570,7 +570,7 @@ function MoveSelector({
           {(typeFilter || catFilter || query) && (
             <div className="flex items-center justify-between mb-2 text-xs text-gray-400">
               <span>{available.length} {t('resultados')}</span>
-              <button type="button" className="text-poke-gold hover:underline" onClick={() => { setQuery(''); setTypeFilter(''); setCatFilter(''); }}>
+              <button type="button" className="text-poke-pink hover:underline" onClick={() => { setQuery(''); setTypeFilter(''); setCatFilter(''); }}>
                 {t('Limpiar filtros')}
               </button>
             </div>
@@ -598,7 +598,7 @@ function MoveSelector({
                     return (
                       <tr
                         key={id}
-                        className={`border-t border-poke-accent/20 hover:bg-poke-gold/15 cursor-pointer transition-colors ${i % 2 ? 'bg-white/[0.02]' : ''}`}
+                        className={`border-t border-poke-accent/20 hover:bg-poke-pink/15 cursor-pointer transition-colors ${i % 2 ? 'bg-white/[0.02]' : ''}`}
                         onClick={() => setMove(editing, id)}
                       >
                         <td className="px-2 py-1.5 font-medium whitespace-nowrap">{localizeName('moves', data.moveNames?.[id] ?? id, lang)}</td>
