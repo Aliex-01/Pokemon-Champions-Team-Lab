@@ -171,8 +171,44 @@ export function Layout() {
         </Suspense>
       </main>
 
-      <footer className="text-center text-xs text-gray-500 py-4 border-t border-poke-accent/30">
-        {t('Datos: PokéAPI · Pokémon Showdown · Smogon Stats · Solo Pokémon legal en Champions Reg M-B')}
+      <footer className="mt-auto border-t border-poke-accent/30 bg-poke-panel/40">
+        <div className="max-w-7xl mx-auto px-4 py-6 grid gap-5 sm:grid-cols-[1fr_auto] sm:items-start">
+          <div className="flex items-start gap-3">
+            <Logo className="w-8 h-8 shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-white">
+                Pokémon Champions <span className="text-poke-pink">Team Lab</span>
+              </p>
+              <p className="text-xs text-gray-400 mt-0.5 whitespace-nowrap">
+                {t('Constructor y análisis de equipos para VGC Champions (Reg M-B, dobles).')}
+              </p>
+            </div>
+          </div>
+          <div className="text-xs sm:text-right">
+            <span className="text-gray-500 uppercase tracking-wide text-[10px]">{t('Datos y código')}</span>
+            <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 sm:justify-end">
+              {[
+                { href: 'https://pokeapi.co', label: 'PokéAPI' },
+                { href: 'https://pokemonshowdown.com', label: 'Pokémon Showdown' },
+                { href: 'https://www.smogon.com/stats/', label: 'Smogon Stats' },
+                { href: 'https://github.com/Aliex-01/Pokemon-Champions-Team-Lab', label: 'GitHub' },
+              ].map(({ href, label }) => (
+                <a
+                  key={label}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-400 hover:text-poke-pink transition-colors"
+                >
+                  {label}
+                </a>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="border-t border-poke-accent/20 px-4 py-3 text-center text-[11px] text-gray-500">
+          {t('Proyecto fan sin ánimo de lucro. Pokémon © Nintendo · Game Freak · The Pokémon Company.')}
+        </div>
       </footer>
 
       {/* Crear / Renombrar equipo */}

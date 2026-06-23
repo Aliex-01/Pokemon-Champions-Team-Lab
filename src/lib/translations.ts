@@ -112,6 +112,11 @@ export const TRANSLATIONS: Record<string, string> = {
   Eliminar: 'Delete',
   'Datos: PokéAPI · Pokémon Showdown · Smogon Stats · Solo Pokémon legal en Champions Reg M-B':
     'Data: PokéAPI · Pokémon Showdown · Smogon Stats · Only Pokémon legal in Champions Reg M-B',
+  'Constructor y análisis de equipos para VGC Champions (Reg M-B, dobles).':
+    'Team builder and analysis for VGC Champions (Reg M-B, doubles).',
+  'Datos y código': 'Data & code',
+  'Proyecto fan sin ánimo de lucro. Pokémon © Nintendo · Game Freak · The Pokémon Company.':
+    'Non-profit fan project. Pokémon © Nintendo · Game Freak · The Pokémon Company.',
 
   // ---- Modales de equipo ----
   'Nuevo equipo': 'New team',
