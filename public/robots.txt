@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://champions-team-lab.netlify.app/sitemap.xml
+Sitemap: https://champions-team-lab.js.org/sitemap.xml

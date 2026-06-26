@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useLang, type Lang } from './i18n';
 
-export const SITE_URL = 'https://champions-team-lab.netlify.app';
+export const SITE_URL = 'https://champions-team-lab.js.org';
 const SITE_NAME = 'Pokémon Champions Team Lab';
 
 interface RouteMeta {
