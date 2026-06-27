@@ -17,6 +17,7 @@ const CoverageView = lazy(() => import('./views/CoverageView').then((m) => ({ de
 const DamageCalcView = lazy(() => import('./views/DamageCalcView').then((m) => ({ default: m.DamageCalcView })));
 const TeamAnalysisView = lazy(() => import('./views/TeamAnalysisView').then((m) => ({ default: m.TeamAnalysisView })));
 const ReplaysView = lazy(() => import('./views/ReplaysView').then((m) => ({ default: m.ReplaysView })));
+const OptimizerView = lazy(() => import('./views/OptimizerView').then((m) => ({ default: m.OptimizerView })));
 
 function AppRoutes({ data }: { data: ChampionsData }) {
   return (
@@ -29,6 +30,7 @@ function AppRoutes({ data }: { data: ChampionsData }) {
         <Route path="damage" element={<DamageCalcView data={data} />} />
         <Route path="analysis" element={<TeamAnalysisView data={data} />} />
         <Route path="replays" element={<ReplaysView data={data} />} />
+        <Route path="optimizer" element={<OptimizerView data={data} />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
