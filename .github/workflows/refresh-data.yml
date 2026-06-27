@@ -1,0 +1,24 @@
+name: Refrescar datos (Cloudflare Pages)
+
+# Cloudflare Pages reconstruye solo en cada push (integración con Git). Este
+# workflow solo se encarga del refresco PROGRAMADO: llama al Deploy Hook de
+# Cloudflare para que rehaga el build y vuelva a descargar datos de Smogon/PokeAPI.
+on:
+  schedule:
+    # Lunes 09:00 UTC.
+    - cron: '0 9 * * 1'
+  workflow_dispatch: {}
+
+jobs:
+  trigger-cloudflare:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Lanzar Deploy Hook de Cloudflare Pages
+        env:
+          HOOK: ${{ secrets.CLOUDFLARE_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "::error::Falta el secret CLOUDFLARE_DEPLOY_HOOK (créalo en Settings > Secrets and variables > Actions)."
+            exit 1
+          fi
+          curl -fsSL -X POST "$HOOK"
