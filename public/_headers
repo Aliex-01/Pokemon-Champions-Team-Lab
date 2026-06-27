@@ -1,0 +1,15 @@
+# Cabeceras que aplica Cloudflare Pages (y Netlify) a las respuestas.
+
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(), microphone=(), camera=()
+
+# Assets con hash en el nombre → cachear "para siempre".
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Datos que se refrescan cada semana → caché corta.
+/data/*
+  Cache-Control: public, max-age=3600
