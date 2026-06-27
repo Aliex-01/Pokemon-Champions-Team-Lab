@@ -73,6 +73,16 @@ const ROUTE_META: Record<string, RouteMeta> = {
       en: 'Champions team analysis: archetype, category score, roles, synergies, meta threats and warnings.',
     },
   },
+  '/optimizer': {
+    title: {
+      es: 'Optimizador de EVs VGC — Pokémon Champions Team Lab',
+      en: 'EV Optimizer VGC — Pokémon Champions Team Lab',
+    },
+    desc: {
+      es: 'Calcula los EVs mínimos para superar en velocidad, sobrevivir a un ataque o hacer OHKO/2HKO en Pokémon Champions (VGC).',
+      en: 'Compute the minimum EVs to outspeed, survive a hit or OHKO/2HKO in Pokémon Champions (VGC).',
+    },
+  },
   '/replays': {
     title: {
       es: 'Análisis de Repeticiones VGC — Pokémon Champions Team Lab',

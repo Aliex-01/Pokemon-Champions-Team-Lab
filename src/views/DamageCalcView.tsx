@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect, useRef, type Dispatch, type SetStateActio
 import { useTeam } from '../store/teamStore';
 import { getSpecies, getLearnset, localizeName } from '../lib/championsData';
 import { Dropdown } from '../components/Dropdown';
+import { MoveSearch } from '../components/MoveSearch';
 import { PokemonSprite, ItemSprite } from '../components/PokemonSprite';
 import { formatNatureLabel, clampInvestment, calcAllStats, getStatNatureClass } from '../lib/stats';
 import { loadMetaBuilds } from '../lib/metaBuilds';
@@ -581,13 +582,15 @@ function RivalEditor({ data, mon, onChange, hasMeta, onApplyMeta, field }: { dat
             <span className="text-xs text-gray-400 uppercase">{t('Movimientos')}</span>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 mt-1">
               {[0, 1, 2, 3].map((i) => (
-                <Dropdown
+                <MoveSearch
                   key={i}
+                  moves={learnset}
                   value={mon.moves[i] ?? ''}
-                  options={['', ...learnset]}
-                  onChange={(v) => { const moves = [...mon.moves] as CalcMon['moves']; moves[i] = v; set({ moves }); }}
-                  render={(id) => (id ? localizeName('moves', data.moveNames?.[id] ?? id, lang) : t('— Movimiento —'))}
+                  names={data.moveNames ?? {}}
+                  onPick={(v) => { const moves = [...mon.moves] as CalcMon['moves']; moves[i] = v; set({ moves }); }}
                   placeholder={`${t('Movimiento')} ${i + 1}`}
+                  lang={lang}
+                  clearable
                 />
               ))}
             </div>
