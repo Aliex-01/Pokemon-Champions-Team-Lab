@@ -5,6 +5,7 @@
 CREATE TABLE IF NOT EXISTS users (
   id           TEXT PRIMARY KEY,            -- uuid
   email        TEXT NOT NULL UNIQUE,        -- en minúsculas
+  username     TEXT UNIQUE,                 -- nombre de usuario (3-20, único)
   pw_hash      TEXT NOT NULL,               -- hash PBKDF2 en base64
   pw_salt      TEXT NOT NULL,               -- salt aleatorio en base64
   pw_iters     INTEGER NOT NULL,            -- nº de iteraciones PBKDF2
