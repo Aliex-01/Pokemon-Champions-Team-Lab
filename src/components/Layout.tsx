@@ -4,6 +4,7 @@ import { Logo } from './Logo';
 import { useTeam } from '../store/teamStore';
 import { useLang } from '../lib/i18n';
 import { useRouteSeo } from '../lib/seo';
+import { AccountMenu } from './AccountMenu';
 import { Dropdown } from './Dropdown';
 import { Modal } from './Modal';
 
@@ -132,6 +133,7 @@ export function Layout() {
               {lang === 'es' ? <FlagES /> : <FlagGB />}
               {lang.toUpperCase()}
             </button>
+            <AccountMenu />
           </nav>
         </div>
 

@@ -402,5 +402,32 @@ export const TRANSLATIONS: Record<string, string> = {
   'Re-sincronizando…': 'Re-syncing…',
   'Vuelve a descargar y reparsear todas las repeticiones': 'Re-download and re-parse all replays',
 
+  // ---- Cuentas / nube ----
+  Entrar: 'Sign in',
+  'Iniciar sesión': 'Sign in',
+  'Crear cuenta': 'Create account',
+  'Mi cuenta': 'My account',
+  Correo: 'Email',
+  Contraseña: 'Password',
+  'Cerrar sesión': 'Sign out',
+  'Sesión iniciada como': 'Signed in as',
+  'Guarda tus equipos en la nube para tenerlos en cualquier dispositivo.':
+    'Save your teams to the cloud to access them on any device.',
+  'Guardar en la nube': 'Save to cloud',
+  'Cargar de la nube': 'Load from cloud',
+  'Equipos guardados en la nube': 'Teams saved to the cloud',
+  'No se pudo guardar en la nube.': 'Could not save to the cloud.',
+  'No se pudo cargar de la nube.': 'Could not load from the cloud.',
+  'Esto reemplazará tus equipos locales por los de la nube. ¿Continuar?':
+    'This will replace your local teams with the cloud ones. Continue?',
+  '¿No tienes cuenta? Regístrate': "Don't have an account? Sign up",
+  '¿Ya tienes cuenta? Inicia sesión': 'Already have an account? Sign in',
+  'Correo no válido.': 'Invalid email.',
+  'La contraseña debe tener al menos 8 caracteres.': 'Password must be at least 8 characters.',
+  'Ese correo ya está registrado.': 'That email is already registered.',
+  'Correo o contraseña incorrectos.': 'Wrong email or password.',
+  'Demasiados intentos. Espera unos minutos.': 'Too many attempts. Wait a few minutes.',
+  'Algo ha ido mal. Inténtalo de nuevo.': 'Something went wrong. Try again.',
+
   // ---- Toast / varios ----
 };

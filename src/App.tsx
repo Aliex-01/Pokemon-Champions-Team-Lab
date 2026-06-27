@@ -4,6 +4,7 @@ import { TeamProvider } from './store/teamStore';
 import { Layout } from './components/Layout';
 import { Logo } from './components/Logo';
 import { LanguageProvider, useLang } from './lib/i18n';
+import { AuthProvider } from './lib/auth';
 import { loadChampionsData } from './lib/championsData';
 import type { ChampionsData } from './types/pokemon';
 
@@ -76,11 +77,13 @@ function AppInner() {
   }
 
   return (
-    <TeamProvider>
-      <BrowserRouter>
-        <AppRoutes data={data} />
-      </BrowserRouter>
-    </TeamProvider>
+    <AuthProvider>
+      <TeamProvider>
+        <BrowserRouter>
+          <AppRoutes data={data} />
+        </BrowserRouter>
+      </TeamProvider>
+    </AuthProvider>
   );
 }
 
