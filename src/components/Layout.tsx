@@ -1,5 +1,5 @@
 import { useState, Suspense } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { Logo } from './Logo';
 import { useTeam } from '../store/teamStore';
 import { useLang } from '../lib/i18n';
@@ -49,6 +49,52 @@ const NAV_ITEMS = [
   { to: '/replays', label: 'Repeticiones', beta: true },
 ];
 
+// Enlaces de navegación, reutilizados en la barra de escritorio y en el menú móvil.
+function NavLinks({ t, onNavigate }: { t: (s: string) => string; onNavigate?: () => void }) {
+  return (
+    <>
+      {NAV_ITEMS.map(({ to, label, end, beta }) => (
+        <NavLink
+          key={to}
+          to={to}
+          end={end}
+          onClick={onNavigate}
+          className={({ isActive }) =>
+            `nav-link w-full justify-start inline-flex items-center gap-1.5 whitespace-nowrap ${isActive ? 'nav-link-active' : ''}`
+          }
+        >
+          {t(label)}
+          {beta && (
+            <span className="text-[9px] font-bold uppercase leading-none px-1 py-0.5 rounded bg-[#4b2a47] text-poke-pink border border-poke-pink/40">
+              beta
+            </span>
+          )}
+        </NavLink>
+      ))}
+    </>
+  );
+}
+
+// Contenido del menú lateral: marca arriba, navegación, y abajo la cuenta.
+function SidebarContent({ t, onNavigate }: { t: (s: string) => string; onNavigate?: () => void }) {
+  return (
+    <div className="flex flex-col h-full">
+      <Link to="/" onClick={onNavigate} className="flex items-center gap-2 px-4 py-4 border-b border-poke-accent/40 hover:bg-poke-accent/20 transition-colors">
+        <Logo className="w-8 h-8 shrink-0" />
+        <span className="text-sm font-bold text-white leading-tight">
+          Pokémon Champions<br /><span className="text-poke-pink">Team Lab</span>
+        </span>
+      </Link>
+      <nav className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-1">
+        <NavLinks t={t} onNavigate={onNavigate} />
+      </nav>
+      <div className="border-t border-poke-accent/40 p-3">
+        <AccountMenu />
+      </div>
+    </div>
+  );
+}
+
 export function Layout() {
   const { teams, activeTeamId, setActiveTeamId, createTeam, deleteTeam, renameTeam } = useTeam();
   const { t, lang, toggle } = useLang();
@@ -75,90 +121,77 @@ export function Layout() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="bg-poke-panel border-b border-poke-accent/50 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Logo className="w-8 h-8 shrink-0" />
-            <h1 className="text-xl font-bold text-white">
-              Pokémon Champions <span className="text-poke-pink">Team Lab</span>
-            </h1>
-          </div>
+    <div className="min-h-screen flex">
+      {/* Menú lateral (escritorio) */}
+      <aside className="hidden lg:flex flex-col w-56 shrink-0 bg-poke-panel border-r border-poke-accent/50 sticky top-0 h-screen">
+        <SidebarContent t={t} />
+      </aside>
 
-          {/* Botón hamburguesa: solo en móvil */}
-          <button
-            type="button"
-            aria-label={t('Menú')}
-            aria-expanded={navOpen}
-            onClick={() => setNavOpen((o) => !o)}
-            className="md:hidden ml-auto p-2 rounded-lg border border-poke-accent text-gray-200 hover:bg-poke-accent/40 transition-colors active:scale-95"
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              {navOpen ? (
-                <><line x1="6" y1="6" x2="18" y2="18" /><line x1="6" y1="18" x2="18" y2="6" /></>
-              ) : (
-                <><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" /></>
+      {/* Drawer lateral (pantallas pequeñas) */}
+      {navOpen && (
+        <>
+          <div className="fixed inset-0 z-50 bg-black/50 lg:hidden" onClick={() => setNavOpen(false)} />
+          <aside className="fixed left-0 top-0 z-50 h-full w-64 bg-poke-panel border-r border-poke-accent/50 lg:hidden">
+            <SidebarContent t={t} onNavigate={() => setNavOpen(false)} />
+          </aside>
+        </>
+      )}
+
+      {/* Columna principal */}
+      <div className="flex-1 min-w-0 flex flex-col">
+        <header className="sticky top-0 z-40 bg-poke-panel/95 backdrop-blur border-b border-poke-accent/50">
+          <div className="px-4 py-3 flex items-center gap-3 flex-wrap">
+            {/* Móvil: hamburguesa + marca compacta */}
+            <button
+              type="button"
+              aria-label={t('Menú')}
+              onClick={() => setNavOpen(true)}
+              className="lg:hidden p-2 rounded-lg border border-poke-accent text-gray-200 hover:bg-poke-accent/40 transition-colors active:scale-95"
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
+            </button>
+            <Link to="/" className="lg:hidden flex items-center gap-2">
+              <Logo className="w-7 h-7" />
+              <span className="font-bold text-white">Champions <span className="text-poke-pink">Lab</span></span>
+            </Link>
+
+            {/* Controles de equipo */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <label className="text-sm text-gray-400">{t('Equipo activo:')}</label>
+              <Dropdown
+                className="w-auto min-w-[180px]"
+                value={activeTeamId ?? ''}
+                options={teams.map((t) => t.id)}
+                onChange={(id) => setActiveTeamId(id)}
+                render={(id) => teams.find((t) => t.id === id)?.name ?? id}
+              />
+              <button type="button" className="btn-secondary text-sm py-1 border border-transparent active:scale-95" onClick={openCreate}>
+                {t('+ Nuevo')}
+              </button>
+              <button type="button" className="btn-secondary text-sm py-1 border border-transparent active:scale-95" onClick={openRename}>
+                {t('Renombrar')}
+              </button>
+              {teams.length > 1 && (
+                <button type="button" className="px-3 py-2 rounded-lg border border-red-700/50 text-red-400 text-sm hover:bg-red-900/30 transition-colors active:scale-95" onClick={() => setDialog('delete')}>
+                  {t('Eliminar')}
+                </button>
               )}
-            </svg>
-          </button>
+            </div>
 
-          <nav
-            className={`${navOpen ? 'flex' : 'hidden'} md:flex w-full md:w-auto md:ml-auto order-last md:order-none flex-col md:flex-row flex-wrap gap-1`}
-          >
-            {NAV_ITEMS.map(({ to, label, end, beta }) => (
-              <NavLink
-                key={to}
-                to={to}
-                end={end}
-                title={beta ? 'Beta' : undefined}
-                onClick={() => setNavOpen(false)}
-                className={({ isActive }) =>
-                  `nav-link ${isActive ? 'nav-link-active' : ''} ${beta ? 'relative' : ''}`
-                }
-              >
-                {t(label)}
-                {beta && (
-                  <span className="absolute -bottom-1.5 -right-1 text-[10px] font-bold uppercase leading-none px-1 py-0.5 rounded bg-[#4b2a47] text-poke-pink border border-poke-pink/40 pointer-events-none">
-                    beta
-                  </span>
-                )}
-              </NavLink>
-            ))}
+            {/* Idioma, a la derecha de la barra superior */}
             <button
               type="button"
               onClick={toggle}
               title={lang === 'es' ? 'Switch to English' : 'Cambiar a Español'}
-              className="md:ml-1 px-3 py-2 rounded-lg text-sm font-medium border border-poke-accent text-gray-200 hover:bg-poke-accent/40 hover:border-poke-pink/60 transition-all duration-150 active:scale-95 min-w-[68px] inline-flex items-center justify-center gap-2"
+              className="ml-auto px-3 py-2 rounded-lg text-sm font-medium border border-poke-accent text-gray-200 hover:bg-poke-accent/40 hover:border-poke-pink/60 transition-all duration-150 active:scale-95 inline-flex items-center gap-2"
             >
               {lang === 'es' ? <FlagES /> : <FlagGB />}
               {lang.toUpperCase()}
             </button>
-            <AccountMenu />
-          </nav>
-        </div>
-
-        <div className="max-w-7xl mx-auto px-4 pb-3 flex flex-wrap items-center gap-2">
-          <label className="text-sm text-gray-400">{t('Equipo activo:')}</label>
-          <Dropdown
-            className="w-auto min-w-[180px]"
-            value={activeTeamId ?? ''}
-            options={teams.map((t) => t.id)}
-            onChange={(id) => setActiveTeamId(id)}
-            render={(id) => teams.find((t) => t.id === id)?.name ?? id}
-          />
-          <button type="button" className="btn-secondary text-sm py-1 border border-transparent active:scale-95" onClick={openCreate}>
-            {t('+ Nuevo')}
-          </button>
-          <button type="button" className="btn-secondary text-sm py-1 border border-transparent active:scale-95" onClick={openRename}>
-            {t('Renombrar')}
-          </button>
-          {teams.length > 1 && (
-            <button type="button" className="px-3 py-2 rounded-lg border border-red-700/50 text-red-400 text-sm hover:bg-red-900/30 transition-colors active:scale-95" onClick={() => setDialog('delete')}>
-              {t('Eliminar')}
-            </button>
-          )}
-        </div>
-      </header>
+          </div>
+        </header>
 
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-6">
         <Suspense
@@ -213,6 +246,7 @@ export function Layout() {
           {t('Proyecto fan sin ánimo de lucro. Pokémon © Nintendo · Game Freak · The Pokémon Company.')}
         </div>
       </footer>
+      </div>
 
       {/* Crear / Renombrar equipo */}
       <Modal open={dialog === 'create' || dialog === 'rename'} onClose={closeDialog} title={dialog === 'rename' ? t('Renombrar equipo') : t('Nuevo equipo')}>

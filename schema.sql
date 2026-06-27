@@ -31,6 +31,13 @@ CREATE TABLE IF NOT EXISTS teams (
 );
 CREATE INDEX IF NOT EXISTS idx_teams_user ON teams(user_id);
 
+-- Repeticiones del usuario (historial + usuario de Showdown) en un blob JSON.
+CREATE TABLE IF NOT EXISTS user_replays (
+  user_id      TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  data         TEXT NOT NULL,               -- JSON { replays: [...], sdUsername }
+  updated_at   INTEGER NOT NULL
+);
+
 -- Control de intentos de login (rate limiting anti fuerza bruta).
 CREATE TABLE IF NOT EXISTS login_attempts (
   key          TEXT PRIMARY KEY,            -- email|ip

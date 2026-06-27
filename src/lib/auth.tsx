@@ -16,6 +16,13 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 const TEAMS_KEY = 'champions-teams';
+const REPLAYS_KEY = 'champions-replays';
+const SDUSER_KEY = 'champions-sd-username';
+
+function safeParse<T>(raw: string | null, fallback: T): T {
+  if (raw == null) return fallback;
+  try { return JSON.parse(raw) as T; } catch { return fallback; }
+}
 
 async function api<T = unknown>(path: string, opts: RequestInit = {}): Promise<T> {
   const res = await fetch(path, {
@@ -52,14 +59,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
   const pushTeams = async () => {
-    const raw = localStorage.getItem(TEAMS_KEY);
-    const teams = raw ? JSON.parse(raw) : [];
+    // Equipos.
+    const teams = safeParse<unknown[]>(localStorage.getItem(TEAMS_KEY), []);
     const d = await api<{ count: number }>('/api/teams', { method: 'PUT', body: JSON.stringify({ teams }) });
+    // Repeticiones + usuario de Showdown.
+    const replays = safeParse<unknown[]>(localStorage.getItem(REPLAYS_KEY), []);
+    const sdUsername = safeParse<string>(localStorage.getItem(SDUSER_KEY), '');
+    await api('/api/replays', { method: 'PUT', body: JSON.stringify({ data: { replays, sdUsername } }) });
     return d.count;
   };
   const pullTeams = async () => {
-    const d = await api<{ teams: unknown[] }>('/api/teams');
-    localStorage.setItem(TEAMS_KEY, JSON.stringify(d.teams));
+    const dt = await api<{ teams: unknown[] }>('/api/teams');
+    localStorage.setItem(TEAMS_KEY, JSON.stringify(dt.teams));
+    const dr = await api<{ data: { replays?: unknown[]; sdUsername?: string } | null }>('/api/replays');
+    if (dr.data) {
+      if (Array.isArray(dr.data.replays)) localStorage.setItem(REPLAYS_KEY, JSON.stringify(dr.data.replays));
+      if (typeof dr.data.sdUsername === 'string') localStorage.setItem(SDUSER_KEY, JSON.stringify(dr.data.sdUsername));
+    }
     location.reload();
   };
 

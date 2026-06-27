@@ -154,6 +154,10 @@ body {
   animation: drop-pop 0.35s ease-out;
 }
 
+/* Oculta la barra de scroll (menú de navegación con desplazamiento horizontal). */
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
 /* Gráfico circular que aparece girando (Move Usage) */
 @keyframes pie-in {
   from { opacity: 0; transform: rotate(-90deg) scale(0.7); }

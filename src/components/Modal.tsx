@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 
 interface ModalProps {
   open: boolean;
@@ -18,7 +19,9 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
 
   if (!open) return null;
 
-  return (
+  // Portal a <body>: evita que un ancestro con contexto de apilado (p. ej. el
+  // sidebar sticky) deje el modal por debajo de otros elementos.
+  return createPortal(
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in-up"
       onMouseDown={onClose}
@@ -30,6 +33,7 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
         <h3 className="text-lg font-bold text-poke-pink mb-4">{title}</h3>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

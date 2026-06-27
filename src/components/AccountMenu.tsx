@@ -32,7 +32,7 @@ export function AccountMenu() {
 
   const doPush = async () => {
     setBusy(true); setNote(null); setError(null);
-    try { const n = await pushTeams(); setNote(`${t('Equipos guardados en la nube')} (${n}).`); }
+    try { await pushTeams(); setNote(t('Guardado en la nube (equipos y repeticiones).')); }
     catch { setError(t('No se pudo guardar en la nube.')); }
     finally { setBusy(false); }
   };
@@ -47,10 +47,10 @@ export function AccountMenu() {
       <button
         type="button"
         onClick={() => { setOpen(true); setError(null); setNote(null); }}
-        className="md:ml-1 px-3 py-2 rounded-lg text-sm font-medium border border-poke-accent text-gray-200 hover:bg-poke-accent/40 hover:border-poke-pink/60 transition-all duration-150 active:scale-95"
+        className="w-full px-3 py-2 rounded-lg text-sm font-medium border border-poke-accent text-gray-200 hover:bg-poke-accent/40 hover:border-poke-pink/60 transition-all duration-150 active:scale-95 inline-flex items-center justify-center gap-2 truncate"
         title={user ? user.email : t('Iniciar sesión')}
       >
-        {user ? `👤 ${user.username ?? user.email.split('@')[0]}` : `👤 ${t('Entrar')}`}
+        {user ? (user.username ?? user.email.split('@')[0]) : t('Entrar')}
       </button>
 
       <Modal open={open} onClose={() => setOpen(false)} title={user ? t('Mi cuenta') : mode === 'login' ? t('Iniciar sesión') : t('Crear cuenta')}>
@@ -58,7 +58,7 @@ export function AccountMenu() {
           <div className="space-y-3">
             <p className="text-sm text-gray-300">{t('Sesión iniciada como')} <span className="text-poke-pink">{user.username ?? user.email}</span></p>
             {user.username && <p className="text-xs text-gray-500 -mt-2">{user.email}</p>}
-            <p className="text-xs text-gray-400">{t('Guarda tus equipos en la nube para tenerlos en cualquier dispositivo.')}</p>
+            <p className="text-xs text-gray-400">{t('Guarda tus equipos y repeticiones en la nube para tenerlos en cualquier dispositivo.')}</p>
             <div className="grid grid-cols-2 gap-2">
               <button type="button" onClick={doPush} disabled={busy} className="btn-primary py-2 disabled:opacity-50">☁⬆ {t('Guardar en la nube')}</button>
               <button type="button" onClick={doPull} disabled={busy} className="btn-secondary py-2 disabled:opacity-50">☁⬇ {t('Cargar de la nube')}</button>
