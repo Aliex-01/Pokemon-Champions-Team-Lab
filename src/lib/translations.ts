@@ -416,6 +416,9 @@ export const TRANSLATIONS: Record<string, string> = {
   'Sesión iniciada como': 'Signed in as',
   'Guarda tus equipos en la nube para tenerlos en cualquier dispositivo.':
     'Save your teams to the cloud to access them on any device.',
+  'Guarda tus equipos y repeticiones en la nube para tenerlos en cualquier dispositivo.':
+    'Save your teams and replays to the cloud to access them on any device.',
+  'Guardado en la nube (equipos y repeticiones).': 'Saved to the cloud (teams and replays).',
   'Guardar en la nube': 'Save to cloud',
   'Cargar de la nube': 'Load from cloud',
   'Equipos guardados en la nube': 'Teams saved to the cloud',
