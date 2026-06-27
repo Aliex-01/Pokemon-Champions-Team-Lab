@@ -9,6 +9,8 @@ export function AccountMenu() {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
+  const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -20,8 +22,8 @@ export function AccountMenu() {
     e.preventDefault();
     setError(null); setBusy(true);
     try {
-      if (mode === 'login') await login(email.trim(), password);
-      else await register(email.trim(), password);
+      if (mode === 'login') await login(loginId.trim(), password);
+      else await register(email.trim(), username.trim(), password);
       setOpen(false); setPassword('');
     } catch (err) {
       setError(t(authErrorMessage(err instanceof Error ? err.message : '')));
@@ -48,13 +50,14 @@ export function AccountMenu() {
         className="md:ml-1 px-3 py-2 rounded-lg text-sm font-medium border border-poke-accent text-gray-200 hover:bg-poke-accent/40 hover:border-poke-pink/60 transition-all duration-150 active:scale-95"
         title={user ? user.email : t('Iniciar sesión')}
       >
-        {user ? `👤 ${user.email.split('@')[0]}` : `👤 ${t('Entrar')}`}
+        {user ? `👤 ${user.username ?? user.email.split('@')[0]}` : `👤 ${t('Entrar')}`}
       </button>
 
       <Modal open={open} onClose={() => setOpen(false)} title={user ? t('Mi cuenta') : mode === 'login' ? t('Iniciar sesión') : t('Crear cuenta')}>
         {user ? (
           <div className="space-y-3">
-            <p className="text-sm text-gray-300">{t('Sesión iniciada como')} <span className="text-poke-pink">{user.email}</span></p>
+            <p className="text-sm text-gray-300">{t('Sesión iniciada como')} <span className="text-poke-pink">{user.username ?? user.email}</span></p>
+            {user.username && <p className="text-xs text-gray-500 -mt-2">{user.email}</p>}
             <p className="text-xs text-gray-400">{t('Guarda tus equipos en la nube para tenerlos en cualquier dispositivo.')}</p>
             <div className="grid grid-cols-2 gap-2">
               <button type="button" onClick={doPush} disabled={busy} className="btn-primary py-2 disabled:opacity-50">☁⬆ {t('Guardar en la nube')}</button>
@@ -68,10 +71,23 @@ export function AccountMenu() {
           </div>
         ) : (
           <form onSubmit={submit} className="space-y-3">
-            <label className="block">
-              <span className="text-xs text-gray-400 uppercase">{t('Correo')}</span>
-              <input type="email" autoFocus required className="input-field mt-1" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@correo.com" />
-            </label>
+            {mode === 'register' ? (
+              <>
+                <label className="block">
+                  <span className="text-xs text-gray-400 uppercase">{t('Nombre de usuario')}</span>
+                  <input type="text" autoFocus required minLength={3} maxLength={20} pattern="[a-zA-Z0-9_-]{3,20}" className="input-field mt-1" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="usuario" />
+                </label>
+                <label className="block">
+                  <span className="text-xs text-gray-400 uppercase">{t('Correo')}</span>
+                  <input type="email" required className="input-field mt-1" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@correo.com" />
+                </label>
+              </>
+            ) : (
+              <label className="block">
+                <span className="text-xs text-gray-400 uppercase">{t('Usuario o correo')}</span>
+                <input type="text" autoFocus required className="input-field mt-1" value={loginId} onChange={(e) => setLoginId(e.target.value)} placeholder={t('usuario o tu@correo.com')} />
+              </label>
+            )}
             <label className="block">
               <span className="text-xs text-gray-400 uppercase">{t('Contraseña')}</span>
               <input type="password" required minLength={8} className="input-field mt-1" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />

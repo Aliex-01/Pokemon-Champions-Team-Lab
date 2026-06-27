@@ -15,7 +15,7 @@ interface D1Database {
 }
 export interface Env { DB: D1Database; SESSION_SECRET: string; }
 export interface Ctx { request: Request; env: Env; params?: Record<string, string>; }
-export interface User { id: string; email: string; }
+export interface User { id: string; email: string; username: string | null; }
 
 const enc = new TextEncoder();
 const SESSION_DAYS = 30;
@@ -93,14 +93,14 @@ export async function getUser(env: Env, request: Request): Promise<User | null> 
   const token = getCookie(request, COOKIE);
   if (!token) return null;
   const row = await env.DB.prepare(
-    'SELECT s.expires_at AS exp, u.id AS id, u.email AS email FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ?',
-  ).bind(token).first<{ exp: number; id: string; email: string }>();
+    'SELECT s.expires_at AS exp, u.id AS id, u.email AS email, u.username AS username FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ?',
+  ).bind(token).first<{ exp: number; id: string; email: string; username: string | null }>();
   if (!row) return null;
   if (row.exp < Date.now()) {
     await env.DB.prepare('DELETE FROM sessions WHERE token = ?').bind(token).run();
     return null;
   }
-  return { id: row.id, email: row.email };
+  return { id: row.id, email: row.email, username: row.username };
 }
 export async function deleteSession(env: Env, request: Request): Promise<void> {
   const token = getCookie(request, COOKIE);
@@ -136,3 +136,9 @@ export function normEmail(v: unknown): string {
   return String(v ?? '').trim().toLowerCase();
 }
 export const validEmail = (e: string) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e) && e.length <= 254;
+
+export function normUsername(v: unknown): string {
+  return String(v ?? '').trim();
+}
+// 3-20 caracteres: letras, números, guion y guion bajo.
+export const validUsername = (u: string) => /^[a-zA-Z0-9_-]{3,20}$/.test(u);

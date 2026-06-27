@@ -1,12 +1,12 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
-export interface AuthUser { id: string; email: string; }
+export interface AuthUser { id: string; email: string; username: string | null; }
 
 interface AuthContextValue {
   user: AuthUser | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string) => Promise<void>;
+  login: (identifier: string, password: string) => Promise<void>;
+  register: (email: string, username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   /** Sube los equipos locales (localStorage) a la nube. */
   pushTeams: () => Promise<number>;
@@ -39,12 +39,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false));
   }, []);
 
-  const login = async (email: string, password: string) => {
-    const d = await api<{ user: AuthUser }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
+  const login = async (identifier: string, password: string) => {
+    const d = await api<{ user: AuthUser }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ identifier, password }) });
     setUser(d.user);
   };
-  const register = async (email: string, password: string) => {
-    const d = await api<{ user: AuthUser }>('/api/auth/register', { method: 'POST', body: JSON.stringify({ email, password }) });
+  const register = async (email: string, username: string, password: string) => {
+    const d = await api<{ user: AuthUser }>('/api/auth/register', { method: 'POST', body: JSON.stringify({ email, username, password }) });
     setUser(d.user);
   };
   const logout = async () => {
@@ -80,8 +80,10 @@ export function useAuth() {
 export function authErrorMessage(code: string): string {
   switch (code) {
     case 'invalid_email': return 'Correo no válido.';
+    case 'invalid_username': return 'El usuario debe tener 3-20 caracteres (letras, números, - o _).';
     case 'weak_password': return 'La contraseña debe tener al menos 8 caracteres.';
     case 'email_taken': return 'Ese correo ya está registrado.';
+    case 'username_taken': return 'Ese nombre de usuario ya está cogido.';
     case 'invalid_credentials': return 'Correo o contraseña incorrectos.';
     case 'rate_limited': return 'Demasiados intentos. Espera unos minutos.';
     default: return 'Algo ha ido mal. Inténtalo de nuevo.';
