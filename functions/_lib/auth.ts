@@ -18,7 +18,7 @@ export interface Ctx { request: Request; env: Env; params?: Record<string, strin
 export interface User { id: string; email: string; username: string | null; }
 
 const enc = new TextEncoder();
-const SESSION_DAYS = 30;
+const SESSION_DAYS = 365;
 const PBKDF2_ITERS = 100_000;
 
 // ── base64 / base64url ──
