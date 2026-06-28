@@ -443,6 +443,17 @@ export const TRANSLATIONS: Record<string, string> = {
   'Demasiados intentos. Espera unos minutos.': 'Too many attempts. Wait a few minutes.',
   'Algo ha ido mal. Inténtalo de nuevo.': 'Something went wrong. Try again.',
 
+  // ---- Equipos de torneo ----
+  'Equipos de torneo': 'Tournament teams',
+  'Equipos de torneos de Champions. Impórtalos a tu equipo con un clic.':
+    'Pokémon Champions tournament teams. Import them to your team in one click.',
+  'Buscar por jugador, evento o Pokémon…': 'Search by player, event or Pokémon…',
+  equipos: 'teams',
+  'Sin evento': 'No event',
+  'Importado como equipo activo:': 'Imported as your active team:',
+  'No se pudo importar este equipo.': 'Could not import this team.',
+  'Mostrar más': 'Show more',
+
   // ---- Optimizador de EVs ----
   Optimizador: 'Optimizer',
   'Optimizador de EVs': 'EV Optimizer',
@@ -473,6 +484,7 @@ export const TRANSLATIONS: Record<string, string> = {
   'No sobrevive ni con 32 SP': "Doesn't survive even with 32 SP",
   Aguantar: 'Endure',
   'Mínimos (opcional)': 'Minimums (optional)',
+  'Mínimos': 'Minimums',
   '1 golpe': '1 hit',
   '2 golpes': '2 hits',
   'Se optimiza HP +': 'Optimizes HP +',
@@ -486,6 +498,8 @@ export const TRANSLATIONS: Record<string, string> = {
   'Buscar objetivo…': 'Search target…',
   'Defensa del objetivo': "Target's defense",
   'Objeto del atacante': "Attacker's item",
+  'Ataque del rival': "Attacker's offense",
+  'Máx inversión': 'Max investment',
   'Objeto del objetivo': "Target's item",
   'Sin objeto': 'No item',
   'Sin invertir': 'No investment',
@@ -495,6 +509,7 @@ export const TRANSLATIONS: Record<string, string> = {
   'HP/Def máx': 'Max HP/Def',
   'HP/SpD máx': 'Max HP/SpD',
   'Spread del meta': 'Meta spread',
+  'Spread meta': 'Meta spread',
   'Naturaleza favorable': 'Boosting nature',
   'Nat. favorable': 'Boosting nat.',
   Meta: 'Goal',
