@@ -73,6 +73,16 @@ const ROUTE_META: Record<string, RouteMeta> = {
       en: 'Champions team analysis: archetype, category score, roles, synergies, meta threats and warnings.',
     },
   },
+  '/tournament': {
+    title: {
+      es: 'Equipos de torneo VGC — Pokémon Champions Team Lab',
+      en: 'Tournament Teams VGC — Pokémon Champions Team Lab',
+    },
+    desc: {
+      es: 'Equipos de torneos de Pokémon Champions (Reg M-A/M-B): explóralos por evento o Pokémon e impórtalos a tu equipo.',
+      en: 'Pokémon Champions tournament teams (Reg M-A/M-B): browse by event or Pokémon and import them to your team.',
+    },
+  },
   '/optimizer': {
     title: {
       es: 'Optimizador de EVs VGC — Pokémon Champions Team Lab',

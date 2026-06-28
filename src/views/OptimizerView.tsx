@@ -7,7 +7,7 @@ import { Dropdown } from '../components/Dropdown';
 import { MoveSearch } from '../components/MoveSearch';
 import { ItemSearch } from '../components/ItemSearch';
 import { calcMove, emptySide, type CalcMon, type FieldState } from '../lib/damageCalc';
-import { calcAllStats } from '../lib/stats';
+import { calcAllStats, getNatureMod } from '../lib/stats';
 import { loadMetaBuilds } from '../lib/metaBuilds';
 import { DEFAULT_IVS } from '../types/pokemon';
 import type { ChampionsData, SpeciesData, EvSpread, TeamPokemon, MetaBuildsData } from '../types/pokemon';
@@ -16,6 +16,22 @@ const parseSpread = (evs: string): EvSpread => {
   const [hp, atk, def, spa, spd, spe] = evs.split('/').map((n) => parseInt(n, 10) || 0);
   return { hp, atk, def, spa, spd, spe };
 };
+
+const STAT_LBL = ['HP', 'Atk', 'Def', 'SpA', 'SpD', 'Spe'] as const;
+const STAT_KEY = ['hp', 'atk', 'def', 'spa', 'spd', 'spe'] as const;
+// EVs del set más usado con signo de naturaleza: "32 HP / +32 Atk / −4 SpA".
+function metaSpreadEvs(build: { spreads?: { evs: string; nature: string }[] } | null): string {
+  const s = build?.spreads?.[0];
+  if (!s) return '—';
+  const parts = s.evs.split('/').map((n, i) => {
+    const v = parseInt(n, 10) || 0;
+    if (v <= 0) return null;
+    const mod = getNatureMod(s.nature, STAT_KEY[i]);
+    const sign = mod > 0 ? '+' : mod < 0 ? '−' : '';
+    return `${sign}${v} ${STAT_LBL[i]}`;
+  }).filter(Boolean).join(' / ');
+  return parts || '—';
+}
 
 interface Props { data: ChampionsData }
 
@@ -233,19 +249,32 @@ export function OptimizerView({ data }: Props) {
 function SpeedTool({ data, mon, t }: { data: ChampionsData; mon: TeamPokemon; t: (s: string) => string }) {
   const [targetId, setTargetId] = usePersistedState<string>('optimizer-speed-target', '');
   const target = targetId ? getSpecies(targetId) ?? null : null;
-  const [preset, setPreset] = useState<'maxpos' | 'maxneu' | 'min'>('maxpos');
+  const [preset, setPreset] = useState<'maxpos' | 'maxneu' | 'min' | 'meta'>('maxpos');
   const [myTailwind, setMyTailwind] = useState(false);
   const [myScarf, setMyScarf] = useState(mon.item === 'Choice Scarf');
   const [tgtTailwind, setTgtTailwind] = useState(false);
   const [tgtScarf, setTgtScarf] = useState(false);
   const [weather, setWeather] = useState('');
+  const [builds, setBuilds] = useState<MetaBuildsData | null>(null);
+  useEffect(() => { loadMetaBuilds().then(setBuilds); }, []);
+  const metaBuild = useMemo(() => {
+    if (!builds || !target) return null;
+    return builds.pokemon[target.id] ?? (target.baseSpeciesId ? builds.pokemon[target.baseSpeciesId] : null) ?? null;
+  }, [builds, target]);
+  const hasMeta = !!metaBuild?.spreads?.[0];
 
   const calc = useMemo(() => {
     if (!target) return null;
-    const evs = preset === 'min' ? { ...ZERO_EVS } : { ...ZERO_EVS, spe: 32 };
-    const nat = preset === 'maxpos' ? NAT.spe : NAT.neutral;
+    let evs = preset === 'min' ? { ...ZERO_EVS } : { ...ZERO_EVS, spe: 32 };
+    let nat = preset === 'maxpos' ? NAT.spe : NAT.neutral;
+    let tgtScarfEff = tgtScarf;
+    if (preset === 'meta' && metaBuild?.spreads?.[0]) {
+      evs = parseSpread(metaBuild.spreads[0].evs);
+      nat = metaBuild.spreads[0].nature;
+      if (metaBuild.items?.[0]?.name === 'Choice Scarf') tgtScarfEff = true;
+    }
     const tgtMon = makeTarget(target, evs, nat);
-    const tgtSpeed = speedWith(tgtMon, evs.spe, { tailwind: tgtTailwind, scarf: tgtScarf, weatherMult: weatherSpeedMult(target.abilities, weather) });
+    const tgtSpeed = speedWith(tgtMon, evs.spe, { tailwind: tgtTailwind, scarf: tgtScarfEff, weatherMult: weatherSpeedMult(target.abilities, weather) });
     const me = teamToCalc(mon);
     const myWeather = weatherSpeedMult([mon.ability], weather);
     const mine = (sp: number) => speedWith(me, sp, { tailwind: myTailwind, scarf: myScarf, weatherMult: myWeather });
@@ -253,7 +282,7 @@ function SpeedTool({ data, mon, t }: { data: ChampionsData; mon: TeamPokemon; t:
       if (mine(sp) > tgtSpeed) return { ok: true, sp, mySpeed: mine(sp), tgtSpeed };
     }
     return { ok: false, tgtSpeed, mySpeed: mine(32) };
-  }, [target, preset, tgtTailwind, tgtScarf, myTailwind, myScarf, weather, mon]);
+  }, [target, preset, tgtTailwind, tgtScarf, myTailwind, myScarf, weather, metaBuild, mon]);
 
   return (
     <div className="panel p-4 grid gap-4 sm:grid-cols-2 animate-fade-in-up">
@@ -261,7 +290,7 @@ function SpeedTool({ data, mon, t }: { data: ChampionsData; mon: TeamPokemon; t:
         <div className="text-xs text-gray-400 uppercase mb-1">{t('Superar a')}</div>
         <SpeciesSearch data={data} value={target?.name ?? ''} onPick={(sp) => setTargetId(sp.id)} placeholder={t('Buscar Pokémon objetivo…')} />
         <div className="mt-2">
-          <Dropdown value={preset} options={['maxpos', 'maxneu', 'min']} render={(p) => t(p === 'maxpos' ? 'Máx velocidad (+nat)' : p === 'maxneu' ? 'Máx velocidad (neutra)' : 'Sin invertir (0)')} onChange={(p) => setPreset(p as typeof preset)} />
+          <Dropdown value={preset} options={['maxpos', 'maxneu', 'min', ...(hasMeta ? ['meta'] : [])]} render={(p) => p === 'meta' ? `${t('Spread del meta')} (${metaSpreadEvs(metaBuild)})` : t(p === 'maxpos' ? 'Máx velocidad (+nat)' : p === 'maxneu' ? 'Máx velocidad (neutra)' : 'Sin invertir (0)')} onChange={(p) => setPreset(p as typeof preset)} />
         </div>
         <div className="text-xs text-gray-400 uppercase mb-1 mt-3">{t('Clima (ambos)')}</div>
         <Dropdown value={weather} options={['', 'Sun', 'Rain', 'Sand', 'Snow']} render={(w) => t(w === '' ? 'Sin clima' : w === 'Sun' ? 'Sol' : w === 'Rain' ? 'Lluvia' : w === 'Sand' ? 'Arena' : 'Nieve')} onChange={setWeather} placeholder={t('Sin clima')} />
@@ -301,7 +330,11 @@ function DefenseTool({ data, mon, t, lang }: { data: ChampionsData; mon: TeamPok
   const atk = atkId ? getSpecies(atkId) ?? null : null;
   const [moveId, setMoveId] = usePersistedState<string>('optimizer-def-move', '');
   const [atkItem, setAtkItem] = usePersistedState<string>('optimizer-def-item', '');
+  const [atkInvest, setAtkInvest] = useState<'max' | 'none' | 'meta'>('max');
+  const [atkNatureFav, setAtkNatureFav] = useState(true);
   const [hits, setHits] = useState<1 | 2>(1);
+  const [builds, setBuilds] = useState<MetaBuildsData | null>(null);
+  useEffect(() => { loadMetaBuilds().then(setBuilds); }, []);
   // Suelos opcionales por stat (p. ej. 14 HP ya decidido). La defensa no relevante
   // se mantiene en su mínimo (cuenta como inversión fija, no ayuda a sobrevivir).
   const [hpMin, setHpMin] = useState(0);
@@ -311,12 +344,23 @@ function DefenseTool({ data, mon, t, lang }: { data: ChampionsData; mon: TeamPok
   const learn = atk ? getLearnset(atk.id, data) : [];
   const move = moveId ? data.moveData?.[moveId] : undefined;
   const defStat: 'def' | 'spd' = move?.category === 'Physical' ? 'def' : 'spd';
+  // Set más usado del atacante (para la opción "Spread del meta").
+  const metaBuild = useMemo(() => {
+    if (!builds || !atk) return null;
+    return builds.pokemon[atk.id] ?? (atk.baseSpeciesId ? builds.pokemon[atk.baseSpeciesId] : null) ?? null;
+  }, [builds, atk]);
+  const hasMeta = !!metaBuild?.spreads?.[0];
+  const metaItemName = metaBuild?.items?.[0]?.name;
+  const atkItemEff = atkInvest === 'meta' ? (metaItemName && metaItemName !== 'Sin objeto' ? metaItemName : '') : atkItem;
 
   // Busca el reparto HP + (Def o SpD) MÍNIMO en total que sobrevive el ataque.
   const calc = useMemo(() => {
     if (!atk || !moveId || !move || move.category === 'Status') return null;
     const atkStat = move.category === 'Physical' ? 'atk' : 'spa';
-    const attacker = makeTarget(atk, { ...ZERO_EVS, [atkStat]: 32 }, atkStat === 'atk' ? NAT.atk : NAT.spa, atkItem);
+    let aEvs = atkInvest === 'max' ? { ...ZERO_EVS, [atkStat]: 32 } : { ...ZERO_EVS };
+    let aNat = atkNatureFav ? (atkStat === 'atk' ? NAT.atk : NAT.spa) : NAT.neutral;
+    if (atkInvest === 'meta' && metaBuild?.spreads?.[0]) { aEvs = parseSpread(metaBuild.spreads[0].evs); aNat = metaBuild.spreads[0].nature; }
+    const attacker = makeTarget(atk, aEvs, aNat, atkItemEff);
     const base = teamToCalc(mon);
     // La defensa que NO interviene en este ataque se fija a su mínimo.
     const otherStat = defStat === 'def' ? 'spd' : 'def';
@@ -341,7 +385,7 @@ function DefenseTool({ data, mon, t, lang }: { data: ChampionsData; mon: TeamPok
     }
     const worst = calcMove(attacker, { ...base, evs: evsFor(32, 32) }, moveId, FIELD, SIDE, SIDE);
     return { ok: false, pct: (worst?.pctMax ?? 0) * hits };
-  }, [atk, moveId, move, defStat, hits, hpMin, defMin, spdMin, atkItem, mon]);
+  }, [atk, moveId, move, defStat, hits, hpMin, defMin, spdMin, atkItemEff, atkInvest, atkNatureFav, metaBuild, mon]);
 
   const defLabel = defStat === 'def' ? 'Def' : 'SpD';
 
@@ -353,12 +397,23 @@ function DefenseTool({ data, mon, t, lang }: { data: ChampionsData; mon: TeamPok
         <div className="text-xs text-gray-400 uppercase mb-1 mt-2">{t('Movimiento')}</div>
         <MoveSearch moves={learn} value={moveId} names={data.moveNames ?? {}} onPick={setMoveId} placeholder={t('Buscar movimiento…')} lang={lang} />
         <div className="text-xs text-gray-400 uppercase mb-1 mt-2">{t('Objeto del atacante')}</div>
-        <ItemSearch items={OFFENSIVE_ITEMS.filter((i) => data.items.includes(i))} value={atkItem} onPick={setAtkItem} placeholder={t('Sin objeto')} lang={lang} clearable />
+        <ItemSearch items={OFFENSIVE_ITEMS.filter((i) => data.items.includes(i))} value={atkItemEff} onPick={setAtkItem} placeholder={t('Sin objeto')} lang={lang} disabled={atkInvest === 'meta'} clearable />
       </div>
       <div>
         <div className="text-xs text-gray-400 uppercase mb-1">{t('Aguantar')}</div>
         <Dropdown value={String(hits)} options={['1', '2']} render={(h) => (h === '1' ? t('1 golpe') : t('2 golpes'))} onChange={(h) => setHits(Number(h) as 1 | 2)} />
-        <div className="text-xs text-gray-400 uppercase mb-1 mt-3">{t('Mínimos (opcional)')}</div>
+        <div className="text-xs text-gray-400 uppercase mb-1 mt-3">{t('Ataque del rival')}</div>
+        <div className="flex items-center gap-2">
+          <Dropdown
+            className="flex-1 min-w-0"
+            value={atkInvest}
+            options={['max', 'none', ...(hasMeta ? ['meta'] : [])]}
+            render={(v) => v === 'meta' ? `${t('Spread del meta')} (${metaSpreadEvs(metaBuild)})` : t(v === 'max' ? 'Máx inversión' : 'Sin invertir')}
+            onChange={(v) => setAtkInvest(v as typeof atkInvest)}
+          />
+          <ToggleChip active={atkNatureFav && atkInvest !== 'meta'} disabled={atkInvest === 'meta'} onClick={() => setAtkNatureFav((v) => !v)}>{t('Nat. favorable')}</ToggleChip>
+        </div>
+        <div className="text-xs text-gray-400 uppercase mb-1 mt-3">{t('Mínimos')}</div>
         <div className="grid grid-cols-3 gap-2">
           <label className="text-[11px] text-gray-400 text-center">HP<NumStepper value={hpMin} onChange={setHpMin} /></label>
           <label className="text-[11px] text-gray-400 text-center">Def<NumStepper value={defMin} onChange={setDefMin} /></label>
@@ -444,9 +499,9 @@ function OffenseTool({ data, mon, t, lang }: { data: ChampionsData; mon: TeamPok
             expand
             value={bulk}
             options={['none', 'hp', 'def', 'spd', 'hpdef', 'hpspd', ...(hasMeta ? ['meta'] : [])]}
-            render={(b) => t(
+            render={(b) => b === 'meta' ? `${t('Spread del meta')} (${metaSpreadEvs(metaBuild)})` : t(
               b === 'none' ? 'Sin invertir' : b === 'hp' ? 'HP máx' : b === 'def' ? 'Def máx' :
-              b === 'spd' ? 'SpD máx' : b === 'hpdef' ? 'HP/Def máx' : b === 'hpspd' ? 'HP/SpD máx' : 'Spread del meta'
+              b === 'spd' ? 'SpD máx' : b === 'hpdef' ? 'HP/Def máx' : 'HP/SpD máx'
             )}
             onChange={(b) => setBulk(b as typeof bulk)}
           />
