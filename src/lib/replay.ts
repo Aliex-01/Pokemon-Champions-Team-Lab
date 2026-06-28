@@ -85,6 +85,15 @@ export function parseReplayId(input: string): string | null {
 
 // ── Fetch + parseo ───────────────────────────────────────────────────────────
 
+export interface ReplaySearchItem { id: string; format: string; uploadtime: number; players: string[]; }
+
+/** Busca las últimas repeticiones públicas de un usuario en Showdown. */
+export async function searchUserReplays(username: string): Promise<ReplaySearchItem[]> {
+  const res = await fetch(`https://replay.pokemonshowdown.com/search.json?user=${encodeURIComponent(toID(username))}`);
+  if (!res.ok) return [];
+  try { return await res.json(); } catch { return []; }
+}
+
 export async function fetchReplay(id: string): Promise<RawReplay> {
   // El servidor de replays envía Access-Control-Allow-Origin: * → fetch directo.
   const res = await fetch(`https://replay.pokemonshowdown.com/${id}.json`);

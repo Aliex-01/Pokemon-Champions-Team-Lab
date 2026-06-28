@@ -330,6 +330,12 @@ export const TRANSLATIONS: Record<string, string> = {
   'Tu usuario no aparece en esta repetición. Revisa que esté bien escrito.':
     "Your username isn't in this replay. Check the spelling.",
   'No se pudo cargar la repetición.': 'Could not load the replay.',
+  'Importar mis últimas partidas': 'Import my latest games',
+  'Importando…': 'Importing…',
+  'Trae automáticamente tus repeticiones públicas de Champions en Showdown.': 'Automatically fetches your public Champions replays from Showdown.',
+  'No se encontraron repeticiones de Champions para tu usuario.': 'No Champions replays found for your username.',
+  'No hay partidas nuevas que importar.': 'No new games to import.',
+  'No se pudieron buscar tus repeticiones.': 'Could not search your replays.',
   'Cargando…': 'Loading…',
   'Aún no has añadido repeticiones. Pega el enlace de una partida de Showdown arriba.':
     'No replays added yet. Paste a Showdown match link above.',

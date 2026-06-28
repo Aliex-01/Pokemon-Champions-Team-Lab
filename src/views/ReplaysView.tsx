@@ -4,7 +4,7 @@ import { useLang } from '../lib/i18n';
 import { getSpecies, localizeName } from '../lib/championsData';
 import { PokemonSprite } from '../components/PokemonSprite';
 import { Logo } from '../components/Logo';
-import { parseReplayId, fetchReplay, parseReplay, userInReplay, type MatchRecord } from '../lib/replay';
+import { parseReplayId, fetchReplay, parseReplay, userInReplay, searchUserReplays, type MatchRecord } from '../lib/replay';
 import {
   computeStats, matchSavedTeam, computeUsage, computeMatchups, computeMoveUsageByMon, computeLeads, groupSets,
   type MonStat, type MonUsage, type Matchup, type MonMoves, type MatchSet, type LeadStat,
@@ -146,6 +146,39 @@ export function ReplaysView(_props: Props) {
     setSyncing(null);
   };
 
+  // Trae automáticamente las últimas repeticiones de Champions de tu usuario en Showdown.
+  const autoImport = async () => {
+    const u = username.trim();
+    if (!u) { setError(t('Pon tu usuario de Showdown primero.')); return; }
+    setError(null); setBusy(true);
+    try {
+      const list = await searchUserReplays(u);
+      const champions = list.filter((r) => /champions/i.test(r.format) || /champions/i.test(r.id));
+      const fresh = champions.filter((r) => !matches.some((m) => m.id === r.id));
+      if (fresh.length === 0) {
+        setError(champions.length === 0 ? t('No se encontraron repeticiones de Champions para tu usuario.') : t('No hay partidas nuevas que importar.'));
+        return;
+      }
+      const recs: MatchRecord[] = [];
+      setSyncing({ done: 0, total: fresh.length });
+      for (const r of fresh) {
+        try {
+          const raw = await fetchReplay(r.id);
+          if (userInReplay(raw, u)) {
+            const rec = parseReplay(raw, u);
+            const matched = matchSavedTeam(rec.myTeam, teams);
+            if (matched) { rec.teamId = matched.id; rec.teamName = matched.name; }
+            recs.push(rec);
+          }
+        } catch { /* salta la que falle */ }
+        setSyncing({ done: recs.length, total: fresh.length });
+      }
+      setMatches((prev) => [...recs, ...prev].sort((a, b) => b.uploadtime - a.uploadtime));
+    } catch {
+      setError(t('No se pudieron buscar tus repeticiones.'));
+    } finally { setBusy(false); setSyncing(null); }
+  };
+
   return (
     <div className="page-enter">
       <div className="mb-4">
@@ -163,6 +196,12 @@ export function ReplaysView(_props: Props) {
             <input className="input-field mt-1" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') addReplay(); }} placeholder="https://replay.pokemonshowdown.com/…" />
           </label>
           <button type="button" onClick={addReplay} disabled={busy} className="btn-primary px-5 py-2.5 disabled:opacity-50">{busy ? `⏳ ${t('Cargando…')}` : `＋ ${t('Añadir')}`}</button>
+        </div>
+        <div className="mt-3 flex items-center gap-3 flex-wrap">
+          <button type="button" onClick={autoImport} disabled={busy} className="btn-secondary text-sm py-2 px-4 disabled:opacity-50">
+            {syncing ? `${t('Importando…')} ${syncing.done}/${syncing.total}` : `↻ ${t('Importar mis últimas partidas')}`}
+          </button>
+          <span className="text-xs text-gray-500">{t('Trae automáticamente tus repeticiones públicas de Champions en Showdown.')}</span>
         </div>
         {error && <p className="text-sm text-red-400 mt-2">⚠ {error}</p>}
       </div>
