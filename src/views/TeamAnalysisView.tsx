@@ -160,6 +160,8 @@ export function TeamAnalysisView({ data }: Props) {
   // Tras el primer frame las barras pasan de 0 a su valor (crecen al entrar);
   // después, los cambios de equipo transicionan suavemente entre valores.
   const [barsReady, setBarsReady] = useState(false);
+  // Tipo de ataque resaltado al pasar el ratón (resalta los Pokémon débiles).
+  const [hoverType, setHoverType] = useState<string | null>(null);
 
   useEffect(() => { loadMetaBuilds().then(setMeta); }, []);
   useEffect(() => {
@@ -454,6 +456,10 @@ export function TeamAnalysisView({ data }: Props) {
   };
   const SCORE_LABELS: Record<string, string> = { speed: 'Velocidad', offense: 'Cobertura ofensiva', defense: 'Solidez defensiva', utility: 'Utilidad' };
 
+  // Multiplicador del tipo atacante sobre un Pokémon (con su habilidad).
+  const effOn = (type: string, m: typeof analysis.mons[number]) =>
+    applyAbility(getTypeEffectiveness(type, m.sp.types, tc), type, m.ability);
+
   return (
     <div className="page-enter">
       {/* Cabecera con arquetipo y puntuación */}
@@ -538,8 +544,11 @@ export function TeamAnalysisView({ data }: Props) {
             </div>
           </div>
           <div className="grid sm:grid-cols-2 gap-x-6 gap-y-2">
-            {analysis.roles.map((r, i) => (
-              <div key={i} className="flex items-start gap-2 animate-fade-in-up py-1 border-t border-poke-accent/15 first:border-0 sm:[&:nth-child(2)]:border-0" style={{ animationDelay: `${i * 50}ms` }}>
+            {analysis.roles.map((r, i) => {
+              const mult = hoverType ? effOn(hoverType, analysis.mons[i]) : 1;
+              const hl = hoverType ? (mult > 1 ? 'ring-1 ring-red-400/60 bg-red-900/15 rounded-lg' : 'opacity-30') : '';
+              return (
+              <div key={i} className={`flex items-start gap-2 animate-fade-in-up py-1 px-1 -mx-1 border-t border-poke-accent/15 first:border-0 sm:[&:nth-child(2)]:border-0 transition-all duration-150 ${hl}`} style={{ animationDelay: `${i * 50}ms` }}>
                 <PokemonSprite speciesId={r.speciesId} className="w-7 h-7 object-contain shrink-0 mt-0.5" />
                 <span className="text-sm w-24 truncate shrink-0 mt-1">{r.name}</span>
                 <div className="flex flex-wrap gap-1">
@@ -549,7 +558,8 @@ export function TeamAnalysisView({ data }: Props) {
                     ))}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -563,7 +573,7 @@ export function TeamAnalysisView({ data }: Props) {
               <div className="flex flex-wrap gap-1.5">
                 {analysis.weakByType.length === 0 ? <span className="text-green-400 text-xs">{t('Ninguna')}</span> :
                   analysis.weakByType.map(({ type, count }, i) => (
-                    <span key={type} className={`pop-in type-${type.toLowerCase()} px-2 py-0.5 rounded text-xs font-medium ${count >= 3 ? 'ring-2 ring-red-400' : ''}`} style={{ animationDelay: `${i * 40}ms` }}>{type} ×{count}</span>
+                    <span key={type} onMouseEnter={() => setHoverType(type)} onMouseLeave={() => setHoverType(null)} className={`pop-in cursor-help type-${type.toLowerCase()} px-2 py-0.5 rounded text-xs font-medium ${count >= 3 ? 'ring-2 ring-red-400' : ''}`} style={{ animationDelay: `${i * 40}ms` }}>{type} ×{count}</span>
                   ))}
               </div>
             </div>
@@ -572,7 +582,7 @@ export function TeamAnalysisView({ data }: Props) {
               <div className="flex flex-wrap gap-1.5">
                 {analysis.unresisted.length === 0 ? <span className="text-green-400 text-xs">{t('Ninguno')} 🎉</span> :
                   analysis.unresisted.map((type, i) => (
-                    <span key={type} className={`pop-in type-${type.toLowerCase()} px-2 py-0.5 rounded text-xs font-medium opacity-80`} style={{ animationDelay: `${i * 40}ms` }}>{type}</span>
+                    <span key={type} onMouseEnter={() => setHoverType(type)} onMouseLeave={() => setHoverType(null)} className={`pop-in cursor-help type-${type.toLowerCase()} px-2 py-0.5 rounded text-xs font-medium opacity-80`} style={{ animationDelay: `${i * 40}ms` }}>{type}</span>
                   ))}
               </div>
             </div>

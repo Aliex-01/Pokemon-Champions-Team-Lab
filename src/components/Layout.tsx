@@ -46,7 +46,7 @@ const NAV_ITEMS = [
   { to: '/coverage', label: 'Cobertura' },
   { to: '/damage', label: 'Calculadora' },
   { to: '/optimizer', label: 'Optimizador', beta: true },
-  { to: '/analysis', label: 'Análisis', beta: true },
+  { to: '/analysis', label: 'Análisis' },
   { to: '/replays', label: 'Repeticiones', beta: true },
 ];
 
