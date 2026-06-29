@@ -3,6 +3,8 @@ import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { Logo } from './Logo';
 import { useTeam } from '../store/teamStore';
 import { useLang } from '../lib/i18n';
+import { useAuth } from '../lib/auth';
+import { canSeeDevPages } from '../lib/devPages';
 import { useRouteSeo } from '../lib/seo';
 import { AccountMenu } from './AccountMenu';
 import { Dropdown } from './Dropdown';
@@ -39,9 +41,9 @@ function FlagGB() {
   );
 }
 
-// `dev: true` → solo visible en localhost (import.meta.env.DEV). En el build de
-// producción (lo que se sube a GitHub) esos enlaces se filtran y la página queda
-// oculta del menú, sin tocar nada al desplegar. La ruta sigue existiendo siempre.
+// `dev: true` → página oculta: visible solo en localhost (import.meta.env.DEV) o
+// para un usuario administrador logueado (user.isAdmin, vía ADMIN_EMAILS en
+// Cloudflare). En el build público se filtra y queda oculta, sin tocar nada.
 type NavItem = { to: string; label: string; end?: boolean; beta?: boolean; dev?: boolean };
 const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'Equipo', end: true },
@@ -56,14 +58,14 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/tournament', label: 'Equipos de torneo', dev: true },
 ];
 
-// En producción se quitan los ítems marcados como `dev`.
-const VISIBLE_NAV_ITEMS = NAV_ITEMS.filter((i) => import.meta.env.DEV || !i.dev);
+const visibleNavItems = (isAdmin: boolean) => NAV_ITEMS.filter((i) => !i.dev || canSeeDevPages(isAdmin));
 
 // Enlaces de navegación, reutilizados en la barra de escritorio y en el menú móvil.
 function NavLinks({ t, onNavigate }: { t: (s: string) => string; onNavigate?: () => void }) {
+  const { user } = useAuth();
   return (
     <>
-      {VISIBLE_NAV_ITEMS.map(({ to, label, end, beta }) => (
+      {visibleNavItems(!!user?.isAdmin).map(({ to, label, end, beta }) => (
         <NavLink
           key={to}
           to={to}

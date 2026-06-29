@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
-export interface AuthUser { id: string; email: string; username: string | null; }
+export interface AuthUser { id: string; email: string; username: string | null; isAdmin?: boolean; }
 
 interface AuthContextValue {
   user: AuthUser | null;

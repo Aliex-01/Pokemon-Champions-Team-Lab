@@ -13,9 +13,16 @@ interface D1Database {
   prepare(query: string): D1Stmt;
   batch(stmts: D1Stmt[]): Promise<unknown>;
 }
-export interface Env { DB: D1Database; SESSION_SECRET: string; }
+export interface Env { DB: D1Database; SESSION_SECRET: string; ADMIN_EMAILS?: string; }
 export interface Ctx { request: Request; env: Env; params?: Record<string, string>; }
-export interface User { id: string; email: string; username: string | null; }
+export interface User { id: string; email: string; username: string | null; isAdmin: boolean; }
+
+// Admin = correo presente en la variable de entorno ADMIN_EMAILS (separada por
+// comas). Se define en el panel de Cloudflare Pages, no en el repo.
+export function isAdminEmail(env: Env, email: string): boolean {
+  const list = (env.ADMIN_EMAILS ?? '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
+  return list.includes(email.trim().toLowerCase());
+}
 
 const enc = new TextEncoder();
 const SESSION_DAYS = 365;
@@ -100,7 +107,7 @@ export async function getUser(env: Env, request: Request): Promise<User | null> 
     await env.DB.prepare('DELETE FROM sessions WHERE token = ?').bind(token).run();
     return null;
   }
-  return { id: row.id, email: row.email, username: row.username };
+  return { id: row.id, email: row.email, username: row.username, isAdmin: isAdminEmail(env, row.email) };
 }
 export async function deleteSession(env: Env, request: Request): Promise<void> {
   const token = getCookie(request, COOKIE);

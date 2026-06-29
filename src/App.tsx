@@ -4,7 +4,8 @@ import { TeamProvider } from './store/teamStore';
 import { Layout } from './components/Layout';
 import { Logo } from './components/Logo';
 import { LanguageProvider, useLang } from './lib/i18n';
-import { AuthProvider } from './lib/auth';
+import { AuthProvider, useAuth } from './lib/auth';
+import { canSeeDevPages } from './lib/devPages';
 import { loadChampionsData } from './lib/championsData';
 import type { ChampionsData } from './types/pokemon';
 
@@ -22,6 +23,7 @@ const TournamentTeamsView = lazy(() => import('./views/TournamentTeamsView').the
 const PokedexView = lazy(() => import('./views/PokedexView').then((m) => ({ default: m.PokedexView })));
 
 function AppRoutes({ data }: { data: ChampionsData }) {
+  const { user } = useAuth();
   return (
     <Routes>
       <Route element={<Layout />}>
@@ -33,8 +35,8 @@ function AppRoutes({ data }: { data: ChampionsData }) {
         <Route path="analysis" element={<TeamAnalysisView data={data} />} />
         <Route path="replays" element={<ReplaysView data={data} />} />
         <Route path="optimizer" element={<OptimizerView data={data} />} />
-        {/* Página oculta: solo accesible en desarrollo (localhost). */}
-        {import.meta.env.DEV && <Route path="tournament" element={<TournamentTeamsView data={data} />} />}
+        {/* Página oculta: accesible en localhost o para un usuario admin. */}
+        {canSeeDevPages(!!user?.isAdmin) && <Route path="tournament" element={<TournamentTeamsView data={data} />} />}
         <Route path="dex" element={<PokedexView data={data} />} />
         <Route path="*" element={<NotFound />} />
       </Route>
