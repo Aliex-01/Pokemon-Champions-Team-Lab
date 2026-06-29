@@ -134,7 +134,32 @@ export function BuildsView({ data }: BuildsViewProps) {
       </div>
 
       {loading ? (
-        <p className="text-gray-400">{t('Cargando estadísticas…')}</p>
+        <>
+          {/* Skeleton: fila de 6 huecos + panel de build (imita el layout real) */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mb-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="panel p-2 flex flex-col items-center gap-2">
+                <div className="skeleton w-14 h-14 rounded-lg" />
+                <div className="skeleton h-3 w-16" />
+              </div>
+            ))}
+          </div>
+          <div className="panel p-4 space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="skeleton w-16 h-16 rounded-lg shrink-0" />
+              <div className="flex-1 space-y-2">
+                <div className="skeleton h-4 w-40" />
+                <div className="skeleton h-3 w-24" />
+              </div>
+            </div>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="space-y-1.5">
+                <div className="skeleton h-3 w-28" />
+                <div className="skeleton h-2.5 w-full" />
+              </div>
+            ))}
+          </div>
+        </>
       ) : !builds ? (
         <div className="panel p-4 text-gray-400">
           {t('No hay datos de builds. Ejecuta')} <code className="text-poke-pink">npm run generate-data</code>.
