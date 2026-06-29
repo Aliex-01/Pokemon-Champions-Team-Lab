@@ -6,12 +6,15 @@
   --color-poke-panel: #16213e;
   --color-poke-accent: #0f3460;
   --color-poke-pink: #e94560;
-  --font-sans: "Segoe UI", system-ui, sans-serif;
+  --font-sans: "Inter", "Segoe UI", system-ui, sans-serif;
 }
 
 body {
   @apply bg-poke-dark text-gray-100 min-h-screen;
   font-family: var(--font-sans);
+  /* Cifras tabulares: todos los dígitos con el mismo ancho → columnas de stats
+     perfectamente alineadas y números que no "bailan" al cambiar. */
+  font-variant-numeric: tabular-nums;
 }
 
 /* Barra de scroll personalizada (en lugar de la blanca por defecto) */
@@ -88,6 +91,65 @@ body {
   @apply w-full px-3 py-2 bg-poke-dark border border-poke-accent rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-poke-pink/50 cursor-pointer;
 }
 
+/* Oculta las flechas (spinner) de los input numéricos */
+.no-spinner {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.no-spinner::-webkit-outer-spin-button,
+.no-spinner::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Slider con la estética de la app: track oscuro, relleno rosa hasta el valor
+   (vía --range-pct) y pulgar rosa con realce al pasar el ratón. */
+.range-poke {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 9999px;
+  cursor: pointer;
+  background: linear-gradient(
+    to right,
+    var(--color-poke-pink) 0%,
+    var(--color-poke-pink) var(--range-pct, 0%),
+    var(--color-poke-accent) var(--range-pct, 0%),
+    var(--color-poke-accent) 100%
+  );
+}
+.range-poke::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background: var(--color-poke-pink);
+  border: 2px solid var(--color-poke-panel);
+  box-shadow: 0 0 0 1px var(--color-poke-pink);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.range-poke::-webkit-slider-thumb:hover {
+  transform: scale(1.18);
+  box-shadow: 0 0 8px rgb(233 69 96 / 0.6);
+}
+.range-poke::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background: var(--color-poke-pink);
+  border: 2px solid var(--color-poke-panel);
+  cursor: pointer;
+}
+.range-poke::-moz-range-track {
+  height: 6px;
+  border-radius: 9999px;
+  background: transparent;
+}
+.range-poke:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px rgb(233 69 96 / 0.4);
+}
+
 /* Animación de entrada para los resultados de daño */
 @keyframes fade-in-up {
   from { opacity: 0; transform: translateY(4px); }
@@ -142,6 +204,34 @@ body {
 }
 .pop-in {
   animation: pop-in 0.4s ease-out both;
+}
+
+/* Entrada del modal: leve escala + fade */
+@keyframes modal-pop {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+.modal-pop {
+  animation: modal-pop 0.22s ease-out;
+}
+
+/* Badge MEGA: destello que barre cada cierto tiempo */
+@keyframes badge-shine {
+  0% { transform: translateX(-120%); }
+  35% { transform: translateX(120%); }
+  100% { transform: translateX(120%); }
+}
+.mega-badge {
+  position: relative;
+  overflow: hidden;
+}
+.mega-badge::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-120%);
+  background: linear-gradient(100deg, transparent 30%, rgb(255 255 255 / 0.55), transparent 70%);
+  animation: badge-shine 3.5s ease-in-out infinite;
 }
 
 /* "Pop" al soltar un Pokémon tras reordenar (drag & drop) */
@@ -222,6 +312,7 @@ body {
   .page-enter,
   .grow-x,
   .pop-in,
+  .modal-pop,
   .toast-in,
   .toast-out,
   .drop-pop,
@@ -229,7 +320,8 @@ body {
   .pie-reveal {
     animation: none;
   }
-  .skeleton::after { animation: none; }
+  .skeleton::after,
+  .mega-badge::after { animation: none; }
 }
 
 .nav-link {

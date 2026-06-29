@@ -6,10 +6,12 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: ReactNode;
+  /** Ancho máximo del panel (clase Tailwind). Por defecto `max-w-sm`. */
+  widthClass?: string;
 }
 
 /** Modal centrado con fondo oscurecido, cierre con Escape y clic fuera. */
-export function Modal({ open, onClose, title, children }: ModalProps) {
+export function Modal({ open, onClose, title, children, widthClass = 'max-w-sm' }: ModalProps) {
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -27,7 +29,7 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
       onMouseDown={onClose}
     >
       <div
-        className="panel w-full max-w-sm p-5 shadow-2xl"
+        className={`panel modal-pop w-full ${widthClass} p-5 shadow-2xl max-h-[85vh] overflow-y-auto`}
         onMouseDown={(e) => e.stopPropagation()}
       >
         <h3 className="text-lg font-bold text-poke-pink mb-4">{title}</h3>

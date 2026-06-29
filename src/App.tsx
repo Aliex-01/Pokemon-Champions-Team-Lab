@@ -19,6 +19,7 @@ const TeamAnalysisView = lazy(() => import('./views/TeamAnalysisView').then((m) 
 const ReplaysView = lazy(() => import('./views/ReplaysView').then((m) => ({ default: m.ReplaysView })));
 const OptimizerView = lazy(() => import('./views/OptimizerView').then((m) => ({ default: m.OptimizerView })));
 const TournamentTeamsView = lazy(() => import('./views/TournamentTeamsView').then((m) => ({ default: m.TournamentTeamsView })));
+const PokedexView = lazy(() => import('./views/PokedexView').then((m) => ({ default: m.PokedexView })));
 
 function AppRoutes({ data }: { data: ChampionsData }) {
   return (
@@ -33,6 +34,7 @@ function AppRoutes({ data }: { data: ChampionsData }) {
         <Route path="replays" element={<ReplaysView data={data} />} />
         <Route path="optimizer" element={<OptimizerView data={data} />} />
         <Route path="tournament" element={<TournamentTeamsView data={data} />} />
+        <Route path="dex" element={<PokedexView data={data} />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
