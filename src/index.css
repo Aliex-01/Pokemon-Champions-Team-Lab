@@ -91,6 +91,10 @@ body {
   @apply w-full px-3 py-2 bg-poke-dark border border-poke-accent rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-poke-pink/50 cursor-pointer;
 }
 
+/* Salta el render de cards fuera de pantalla (la Pokédex tiene ~240).
+   contain-intrinsic-size reserva su alto aproximado para que el scroll no salte. */
+.cv-card { content-visibility: auto; contain-intrinsic-size: auto 150px; }
+
 /* Oculta las flechas (spinner) de los input numéricos */
 .no-spinner {
   -moz-appearance: textfield;
@@ -215,6 +219,15 @@ body {
   animation: modal-pop 0.22s ease-out;
 }
 
+/* Transición al cambiar de página (ruta) */
+@keyframes route-enter {
+  from { opacity: 0; transform: scale(0.99); }
+  to { opacity: 1; transform: scale(1); }
+}
+.route-enter {
+  animation: route-enter 0.28s ease-out;
+}
+
 /* Badge MEGA: destello que barre cada cierto tiempo */
 @keyframes badge-shine {
   0% { transform: translateX(-120%); }
@@ -313,6 +326,7 @@ body {
   .grow-x,
   .pop-in,
   .modal-pop,
+  .route-enter,
   .toast-in,
   .toast-out,
   .drop-pop,
@@ -329,5 +343,6 @@ body {
 }
 
 .nav-link-active {
-  @apply bg-poke-pink/20 text-poke-pink border-poke-pink/30;
+  /* El fondo/borde lo dibuja el indicador deslizante; aquí solo el color del texto. */
+  @apply text-poke-pink;
 }
