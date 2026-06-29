@@ -645,7 +645,18 @@ export function TeamAnalysisView({ data }: Props) {
             {meta?.month && <span> · {meta.month}</span>}
           </p>
           {!meta ? (
-            <p className="text-sm text-gray-500">{t('Cargando datos del meta…')}</p>
+            <div className="flex flex-wrap gap-2">
+              {/* Skeleton: chips de amenaza (imita las tarjetas reales) */}
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-2 bg-poke-dark/40 rounded-lg pl-1 pr-2.5 py-1 border border-red-500/20">
+                  <div className="skeleton w-8 h-8 rounded" />
+                  <div className="space-y-1">
+                    <div className="skeleton h-2.5 w-16" />
+                    <div className="skeleton h-2 w-8" />
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : threats.length === 0 ? (
             <p className="text-sm text-green-400">{t('Tu equipo tiene respuesta para las amenazas más usadas. 🎉')}</p>
           ) : (

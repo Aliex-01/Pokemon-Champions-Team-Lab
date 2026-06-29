@@ -84,7 +84,21 @@ export function TournamentTeamsView({ data }: Props) {
       {note && <p className="text-sm text-green-400 mb-3 animate-fade-in-up">{note}</p>}
 
       {teams === null ? (
-        <div className="panel p-8 text-center text-gray-400">{t('Cargando…')}</div>
+        <div className="space-y-2">
+          {/* Skeleton: filas de equipo (6 sprites + jugador/evento + botón) */}
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="panel p-3 flex flex-wrap items-center gap-3">
+              <div className="flex gap-1">
+                {Array.from({ length: 6 }).map((_, j) => <div key={j} className="skeleton w-9 h-9 rounded" />)}
+              </div>
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <div className="skeleton h-3.5 w-32" />
+                <div className="skeleton h-3 w-48" />
+              </div>
+              <div className="skeleton h-8 w-20 rounded-lg shrink-0" />
+            </div>
+          ))}
+        </div>
       ) : (
         <>
           <div className="space-y-2">

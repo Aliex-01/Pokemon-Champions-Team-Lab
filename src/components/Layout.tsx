@@ -39,7 +39,11 @@ function FlagGB() {
   );
 }
 
-const NAV_ITEMS = [
+// `dev: true` → solo visible en localhost (import.meta.env.DEV). En el build de
+// producción (lo que se sube a GitHub) esos enlaces se filtran y la página queda
+// oculta del menú, sin tocar nada al desplegar. La ruta sigue existiendo siempre.
+type NavItem = { to: string; label: string; end?: boolean; beta?: boolean; dev?: boolean };
+const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'Equipo', end: true },
   { to: '/speed', label: 'Speed Tier' },
   { to: '/builds', label: 'Builds Meta' },
@@ -49,13 +53,17 @@ const NAV_ITEMS = [
   { to: '/optimizer', label: 'Optimizador', beta: true },
   { to: '/analysis', label: 'Análisis' },
   { to: '/replays', label: 'Repeticiones', beta: true },
+  { to: '/tournament', label: 'Equipos de torneo', dev: true },
 ];
+
+// En producción se quitan los ítems marcados como `dev`.
+const VISIBLE_NAV_ITEMS = NAV_ITEMS.filter((i) => import.meta.env.DEV || !i.dev);
 
 // Enlaces de navegación, reutilizados en la barra de escritorio y en el menú móvil.
 function NavLinks({ t, onNavigate }: { t: (s: string) => string; onNavigate?: () => void }) {
   return (
     <>
-      {NAV_ITEMS.map(({ to, label, end, beta }) => (
+      {VISIBLE_NAV_ITEMS.map(({ to, label, end, beta }) => (
         <NavLink
           key={to}
           to={to}

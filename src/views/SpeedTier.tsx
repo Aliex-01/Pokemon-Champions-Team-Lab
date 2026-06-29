@@ -4,6 +4,7 @@ import { calcAllStats } from '../lib/stats';
 import { getSpecies, localizeName } from '../lib/championsData';
 import { loadMetaBuilds } from '../lib/metaBuilds';
 import { PokemonSprite } from '../components/PokemonSprite';
+import { useFlip } from '../lib/useFlip';
 import { useLang } from '../lib/i18n';
 import type { ChampionsData, EvSpread, SpeciesData, MetaBuildsData } from '../types/pokemon';
 
@@ -407,6 +408,9 @@ export function SpeedTierView({ data }: SpeedTierProps) {
 
   const maxSpeed = Math.max(1, ...groups.map((g) => g.speed));
 
+  // Las filas se deslizan a su nueva posición al reordenar (Tailwind, TR, Scarf…).
+  const flipBodyRef = useFlip<HTMLTableSectionElement>(groups);
+
   // id de fila a partir de su key (sin caracteres problemáticos para el DOM).
   const tableScrollRef = useRef<HTMLDivElement>(null);
   const rowId = (key: string) => `speedrow-${key.replace(/[^a-z0-9]/gi, '-')}`;
@@ -521,11 +525,12 @@ export function SpeedTierView({ data }: SpeedTierProps) {
               <th className="text-left px-3 py-2 w-[28%]"></th>
             </tr>
           </thead>
-          <tbody>
+          <tbody ref={flipBodyRef}>
             {groups.map((g, i) => (
               <tr
                 key={g.key}
                 id={rowId(g.key)}
+                data-flip-id={g.key}
                 className={`border-t border-poke-accent/30 ${g.hasTeam ? 'bg-poke-pink/15 border-l-4 border-l-poke-pink' : i % 2 ? 'bg-white/[0.02]' : ''}`}
               >
                 <td className="px-3 py-1.5 text-gray-400 align-top">{i + 1}</td>

@@ -33,7 +33,8 @@ function AppRoutes({ data }: { data: ChampionsData }) {
         <Route path="analysis" element={<TeamAnalysisView data={data} />} />
         <Route path="replays" element={<ReplaysView data={data} />} />
         <Route path="optimizer" element={<OptimizerView data={data} />} />
-        <Route path="tournament" element={<TournamentTeamsView data={data} />} />
+        {/* Página oculta: solo accesible en desarrollo (localhost). */}
+        {import.meta.env.DEV && <Route path="tournament" element={<TournamentTeamsView data={data} />} />}
         <Route path="dex" element={<PokedexView data={data} />} />
         <Route path="*" element={<NotFound />} />
       </Route>
