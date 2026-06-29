@@ -44,10 +44,16 @@ export default defineConfig({
             },
           },
           {
-            // Datos de Champions: se sirven de caché y se revalidan en segundo plano.
+            // Datos de Champions (cambian a diario): red primero para tenerlos
+            // frescos; si no hay conexión, cae a la última versión cacheada.
             urlPattern: ({ url }) => url.pathname.startsWith('/data/'),
-            handler: 'StaleWhileRevalidate',
-            options: { cacheName: 'champions-data' },
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'champions-data',
+              networkTimeoutSeconds: 4,
+              expiration: { maxEntries: 20 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
           },
         ],
       },
