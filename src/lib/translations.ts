@@ -347,7 +347,7 @@ export const TRANSLATIONS: Record<string, string> = {
   Repeticiones: 'Replays',
   'Importa repeticiones de Showdown y analiza tus resultados. Todo se guarda en tu navegador.':
     'Import Showdown replays and analyze your results. Everything is saved in your browser.',
-  'Tu usuario de Showdown': 'Your Showdown username',
+  'Usuario de Showdown': 'Showdown username',
   'URL o ID de la repetición': 'Replay URL or ID',
   'Pon tu usuario de Showdown primero.': 'Set your Showdown username first.',
   'URL o ID de repetición no válido.': 'Invalid replay URL or ID.',
@@ -473,11 +473,17 @@ export const TRANSLATIONS: Record<string, string> = {
   'Equipos de torneos de Champions. Impórtalos a tu equipo con un clic.':
     'Pokémon Champions tournament teams. Import them to your team in one click.',
   'Buscar por jugador, evento o Pokémon…': 'Search by player, event or Pokémon…',
+  'Jugador': 'Player',
+  'Evento': 'Event',
+  'Código de alquiler': 'Rental code',
   equipos: 'teams',
   'Sin evento': 'No event',
   'Importado como equipo activo:': 'Imported as your active team:',
+  'Importado en tu equipo:': 'Imported into your team:',
+  'Tu equipo activo no está vacío. Selecciona o crea un equipo vacío.': 'Your active team is not empty. Select or create an empty team.',
   'No se pudo importar este equipo.': 'Could not import this team.',
   'Mostrar más': 'Show more',
+  'Fuente': 'Source',
 
   // ---- Optimizador de EVs ----
   Optimizador: 'Optimizer',
