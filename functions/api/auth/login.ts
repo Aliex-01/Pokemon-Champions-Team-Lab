@@ -1,4 +1,4 @@
-import { type Ctx, verifyPassword, createSession, sessionCookie, json, rateOk, rateFail, rateClear } from '../../_lib/auth';
+import { type Ctx, verifyPassword, createSession, sessionCookie, json, rateOk, rateFail, rateClear, isAdminEmail } from '../../_lib/auth';
 
 export const onRequestPost = async ({ request, env }: Ctx): Promise<Response> => {
   let body: { identifier?: string; email?: string; password?: string };
@@ -23,5 +23,5 @@ export const onRequestPost = async ({ request, env }: Ctx): Promise<Response> =>
 
   await rateClear(env, rateKey);
   const token = await createSession(env, u.id);
-  return json({ user: { id: u.id, email: u.email, username: u.username } }, { headers: { 'Set-Cookie': sessionCookie(token) } });
+  return json({ user: { id: u.id, email: u.email, username: u.username, isAdmin: isAdminEmail(env, u.email) } }, { headers: { 'Set-Cookie': sessionCookie(token) } });
 };

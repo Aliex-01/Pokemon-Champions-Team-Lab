@@ -1,4 +1,4 @@
-import { type Ctx, hashPassword, createSession, sessionCookie, json, uuid, normEmail, validEmail, normUsername, validUsername } from '../../_lib/auth';
+import { type Ctx, hashPassword, createSession, sessionCookie, json, uuid, normEmail, validEmail, normUsername, validUsername, isAdminEmail } from '../../_lib/auth';
 
 export const onRequestPost = async ({ request, env }: Ctx): Promise<Response> => {
   let body: { email?: string; username?: string; password?: string };
@@ -22,5 +22,5 @@ export const onRequestPost = async ({ request, env }: Ctx): Promise<Response> =>
     .bind(id, email, username, hash, salt, iters, Date.now()).run();
 
   const token = await createSession(env, id);
-  return json({ user: { id, email, username } }, { status: 201, headers: { 'Set-Cookie': sessionCookie(token) } });
+  return json({ user: { id, email, username, isAdmin: isAdminEmail(env, email) } }, { status: 201, headers: { 'Set-Cookie': sessionCookie(token) } });
 };
