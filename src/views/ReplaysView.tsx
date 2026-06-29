@@ -84,12 +84,22 @@ export function ReplaysView(_props: Props) {
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [allTeams, setAllTeams] = useState(true);
+  const [allTeams, setAllTeams] = useState(false);
   const [tab, setTab] = useState<Tab>('overview');
   const [syncing, setSyncing] = useState<{ done: number; total: number } | null>(null);
 
+  // Si se elimina un equipo, se borran también las repeticiones asociadas a él.
+  useEffect(() => {
+    const ids = new Set(teams.map((tm) => tm.id));
+    setMatches((prev) => {
+      const next = prev.filter((m) => !m.teamId || ids.has(m.teamId));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [teams, setMatches]);
+
   const filtered = useMemo(
-    () => (allTeams ? matches : matches.filter((m) => m.teamId === activeTeamId)),
+    // Solo partidas asociadas a un equipo (se excluyen las «sin asociar»).
+    () => (allTeams ? matches : matches.filter((m) => m.teamId === activeTeamId)).filter((m) => m.teamId),
     [matches, allTeams, activeTeamId],
   );
 
@@ -188,7 +198,7 @@ export function ReplaysView(_props: Props) {
       <div className="panel p-4 mb-4 border-poke-pink/20">
         <div className="grid sm:grid-cols-[180px_1fr_auto] gap-2 items-end">
           <label className="block">
-            <span className="text-xs text-gray-400 uppercase">{t('Tu usuario de Showdown')}</span>
+            <span className="text-xs text-gray-400 uppercase">{t('Usuario de Showdown')}</span>
             <input className="input-field mt-1" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="usuario" />
           </label>
           <label className="block">
@@ -337,7 +347,7 @@ function Overview({ matches, t }: { matches: MatchRecord[]; t: (s: string) => st
         <div className="panel p-4 animate-fade-in-up" style={{ animationDelay: '60ms' }}>
           <h3 className="font-semibold mb-3">🧩 {t('Por equipo')}</h3>
           <div className="space-y-2">
-            {stats.byTeam.map((ts) => {
+            {stats.byTeam.filter((ts) => ts.key !== '__none__').map((ts) => {
               const wr = pct(ts.wins, ts.total);
               return (
                 <div key={ts.key}>
@@ -415,8 +425,8 @@ function GameByGame({ matches, onDelete, lang, t }: { matches: MatchRecord[]; on
                 <div className="ml-auto flex items-center gap-3 text-xs text-gray-400">
                   <span>{m.turns} {t('turnos')}</span>
                   {m.teamName && <span className="text-poke-pink/80">{m.teamName}</span>}
-                  <a href={`https://replay.pokemonshowdown.com/${m.id}`} target="_blank" rel="noopener noreferrer" className="hover:text-poke-pink" title={t('Ver repetición')}>↗</a>
-                  <button type="button" onClick={() => onDelete(m.id)} className="hover:text-red-400" title={t('Eliminar')}>✕</button>
+                  <a href={`https://replay.pokemonshowdown.com/${m.id}`} target="_blank" rel="noopener noreferrer" className="btn-secondary text-xs py-1 px-2.5">{t('Ver repetición')}</a>
+                  <button type="button" onClick={() => onDelete(m.id)} className="btn-primary text-xs py-1 px-2.5">{t('Eliminar')}</button>
                 </div>
               </div>
             </div>
@@ -469,7 +479,7 @@ function MatchByMatch({ sets, t }: { sets: MatchSet[]; t: (s: string) => string 
                           <span className="text-xs font-medium">{t('Partida')} {i + 1}{' '}
                             {g ? <span className={g.win === true ? 'text-green-400' : g.win === false ? 'text-red-400' : 'text-gray-400'}>{g.win === true ? t('Victoria') : g.win === false ? t('Derrota') : '—'}</span> : <span className="text-gray-600">{t('Sin jugar')}</span>}
                           </span>
-                          {g && <a href={`https://replay.pokemonshowdown.com/${g.id}`} target="_blank" rel="noopener noreferrer" className="text-xs text-sky-400 hover:text-poke-pink">↗ {t('Ver repetición')}</a>}
+                          {g && <a href={`https://replay.pokemonshowdown.com/${g.id}`} target="_blank" rel="noopener noreferrer" className="btn-secondary text-xs py-1 px-2.5 shrink-0">{t('Ver repetición')}</a>}
                         </div>
                         {g && (
                           <div className="flex flex-wrap gap-x-6 gap-y-1">

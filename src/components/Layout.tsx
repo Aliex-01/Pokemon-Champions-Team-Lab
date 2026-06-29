@@ -44,7 +44,7 @@ function FlagGB() {
 // `dev: true` → página oculta: visible solo en localhost (import.meta.env.DEV) o
 // para un usuario administrador logueado (user.isAdmin, vía ADMIN_EMAILS en
 // Cloudflare). En el build público se filtra y queda oculta, sin tocar nada.
-type NavItem = { to: string; label: string; end?: boolean; beta?: boolean; dev?: boolean };
+type NavItem = { to: string; label: string; end?: boolean; dev?: boolean };
 const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'Equipo', end: true },
   { to: '/speed', label: 'Speed Tier' },
@@ -52,10 +52,10 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/dex', label: 'Pokédex' },
   { to: '/coverage', label: 'Cobertura' },
   { to: '/damage', label: 'Calculadora' },
-  { to: '/optimizer', label: 'Optimizador', beta: true },
+  { to: '/optimizer', label: 'Optimizador' },
   { to: '/analysis', label: 'Análisis' },
-  { to: '/replays', label: 'Repeticiones', beta: true },
-  { to: '/tournament', label: 'Equipos de torneo', dev: true },
+  { to: '/replays', label: 'Repeticiones' },
+  { to: '/tournament', label: 'Equipos de torneo' },
 ];
 
 const visibleNavItems = (isAdmin: boolean) => NAV_ITEMS.filter((i) => !i.dev || canSeeDevPages(isAdmin));
@@ -82,7 +82,7 @@ function NavLinks({ t, onNavigate }: { t: (s: string) => string; onNavigate?: ()
         className={`absolute left-0 right-0 z-0 rounded-lg bg-poke-pink/20 border border-poke-pink/30 transition-all duration-300 ease-out ${ind.show ? 'opacity-100' : 'opacity-0'}`}
         style={{ top: ind.top, height: ind.height }}
       />
-      {visibleNavItems(!!user?.isAdmin).map(({ to, label, end, beta }) => (
+      {visibleNavItems(!!user?.isAdmin).map(({ to, label, end }) => (
         <NavLink
           key={to}
           to={to}
@@ -93,11 +93,6 @@ function NavLinks({ t, onNavigate }: { t: (s: string) => string; onNavigate?: ()
           }
         >
           {t(label)}
-          {beta && (
-            <span className="text-[9px] font-bold uppercase leading-none px-1 py-0.5 rounded bg-[#4b2a47] text-poke-pink border border-poke-pink/40">
-              beta
-            </span>
-          )}
         </NavLink>
       ))}
     </div>
@@ -108,7 +103,7 @@ function NavLinks({ t, onNavigate }: { t: (s: string) => string; onNavigate?: ()
 function SidebarContent({ t, onNavigate }: { t: (s: string) => string; onNavigate?: () => void }) {
   return (
     <div className="flex flex-col h-full">
-      <Link to="/" onClick={onNavigate} className="flex items-center gap-2 px-4 py-4 border-b border-poke-accent/40 hover:bg-poke-accent/20 transition-colors">
+      <Link to="/" onClick={onNavigate} className="flex items-center gap-2 px-4 h-16 border-b border-poke-accent/40 hover:bg-poke-accent/20 transition-colors">
         <Logo className="w-8 h-8 shrink-0" />
         <span className="text-sm font-bold text-white leading-tight">
           Pokémon Champions<br /><span className="text-poke-pink">Team Lab</span>
@@ -168,8 +163,8 @@ export function Layout() {
 
       {/* Columna principal */}
       <div className="flex-1 min-w-0 flex flex-col">
-        <header className="sticky top-0 z-40 bg-poke-panel/95 backdrop-blur border-b border-poke-accent/50">
-          <div className="px-4 py-3 flex items-center gap-3 flex-wrap">
+        <header className="sticky top-0 z-40 bg-poke-panel/95 backdrop-blur">
+          <div className="px-4 py-3 lg:py-0 min-h-16 lg:h-16 flex items-center gap-3 flex-wrap border-b border-poke-accent/50">
             {/* Móvil: hamburguesa + marca compacta */}
             <button
               type="button"
@@ -256,6 +251,10 @@ export function Layout() {
                 { href: 'https://pokeapi.co', label: 'PokéAPI' },
                 { href: 'https://pokemonshowdown.com', label: 'Pokémon Showdown' },
                 { href: 'https://www.smogon.com/stats/', label: 'Smogon Stats' },
+                { href: 'https://github.com/pkmn', label: '@pkmn' },
+                { href: 'https://pokepast.es', label: 'Poképaste' },
+                { href: 'https://twitter.com/VGCPastes', label: 'VGCPastes' },
+                { href: 'https://www.championslab.xyz', label: 'ChampionsLab' },
                 { href: 'https://github.com/Aliex-01/Pokemon-Champions-Team-Lab', label: 'GitHub' },
               ].map(({ href, label }) => (
                 <a

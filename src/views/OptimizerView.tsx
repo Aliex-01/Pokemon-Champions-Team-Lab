@@ -203,7 +203,6 @@ export function OptimizerView({ data }: Props) {
     <div className="page-enter">
       <div className="mb-4">
         <h2 className="text-2xl font-bold">{t('Optimizador de EVs')}</h2>
-        <p className="text-sm text-gray-400 mt-1">{t('EVs mínimos (stat points) para alcanzar un objetivo.')}</p>
       </div>
 
       {/* Elegir tu Pokémon */}

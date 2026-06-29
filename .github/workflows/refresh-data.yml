@@ -5,8 +5,8 @@ name: Refrescar datos (Cloudflare Pages)
 # Cloudflare para que rehaga el build y vuelva a descargar datos de Smogon/PokeAPI.
 on:
   schedule:
-    # Lunes 09:00 UTC.
-    - cron: '0 9 * * 1'
+    # Cada día a las 09:00 UTC.
+    - cron: '0 9 * * *'
   workflow_dispatch: {}
 
 jobs:

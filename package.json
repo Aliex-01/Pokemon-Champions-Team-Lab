@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "generate-data": "node scripts/generate-data.mjs",
+    "generate-tournament-teams": "node scripts/generate-tournament-teams.mjs",
     "generate-og": "node scripts/generate-og.mjs",
     "dev": "vite",
-    "build": "npm run generate-data && npm run generate-og && tsc -b && vite build",
+    "build": "npm run generate-data && npm run generate-tournament-teams && npm run generate-og && tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },

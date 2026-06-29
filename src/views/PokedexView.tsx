@@ -247,9 +247,6 @@ export function PokedexView({ data }: PokedexViewProps) {
     <div className="page-enter">
       <div className="mb-5">
         <h1 className="text-2xl font-bold text-white">{t('Pokédex del formato')}</h1>
-        <p className="text-sm text-gray-400 mt-1">
-          {t('Filtra los Pokémon de Champions por movimientos, tipos, habilidad o estadísticas.')}
-        </p>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[320px_1fr] items-start">

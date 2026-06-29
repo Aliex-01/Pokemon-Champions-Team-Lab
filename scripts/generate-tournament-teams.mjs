@@ -6,9 +6,10 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const SHEET_ID = '1axlwmzPA49rYkqXh7zHvAtSP-TKbM0ijGYBPRflLSWw';
-// Pestañas por regulación (gid). Añade aquí la de M-B cuando la tengamos.
+// Pestañas por regulación (gid) del Google Sheet de VGCPastes.
 const SHEETS = [
   { gid: '791705272', reg: 'M-A' },
+  { gid: '1458357160', reg: 'M-B' }, // pestaña «Champions M-B»
 ];
 
 // Parser CSV mínimo (maneja comillas y saltos de línea dentro de celdas).
@@ -45,12 +46,14 @@ async function sheetTeams({ gid, reg }) {
   const iId = 0, iName = col('Full Name'), iPaste = col('Pokepaste'), iDate = col('Date Shared');
   const iEvent = col('Tournament / Event'), iRank = col('Rank'), iSource = col('Link to Source');
   const iOwner = col('Owner'), iMons = col('Pokemon Text for Copypasta');
+  // El nombre de la cabecera incluye un salto de línea: la buscamos por prefijo.
+  const iCode = header.findIndex((h) => h.startsWith('Replica Code'));
 
   const teams = [];
   for (let r = headerIdx + 1; r < rows.length; r++) {
     const row = rows[r];
     const id = (row[iId] || '').trim();
-    if (!/^PC\d+/i.test(id)) continue;
+    if (!/^(?:PC|MB)\d+/i.test(id)) continue;
     const paste = pasteId(row[iPaste]);
     if (!paste) continue;
     // 6 especies a partir de la columna de copypasta (descartando celdas vacías).
@@ -65,6 +68,7 @@ async function sheetTeams({ gid, reg }) {
       rank: (row[iRank] || '').trim(),
       date: (row[iDate] || '').trim(),
       source: (row[iSource] || '').trim(),
+      code: (() => { const c = iCode >= 0 ? (row[iCode] || '').trim() : ''; return /^(?:none|-)?$/i.test(c) ? '' : c; })(),
       paste,
       mons,
     });
@@ -73,11 +77,18 @@ async function sheetTeams({ gid, reg }) {
 }
 
 const here = dirname(fileURLToPath(import.meta.url));
-let all = [];
-for (const s of SHEETS) {
-  const t = await sheetTeams(s);
-  console.log(`✓ ${s.reg}: ${t.length} equipos`);
-  all = all.concat(t);
+const outPath = join(here, '..', 'public', 'data', 'tournament-teams.json');
+
+try {
+  let all = [];
+  for (const s of SHEETS) {
+    const t = await sheetTeams(s);
+    console.log(`✓ ${s.reg}: ${t.length} equipos`);
+    all = all.concat(t);
+  }
+  await writeFile(outPath, JSON.stringify({ generatedAt: new Date().toISOString(), teams: all }));
+  console.log(`✓ public/data/tournament-teams.json (${all.length} equipos)`);
+} catch (err) {
+  // No abortar el build (deploy) si el sheet falla: se conserva el JSON actual.
+  console.warn(`⚠ No se pudieron regenerar los equipos de torneo: ${err.message}. Se mantiene el archivo existente.`);
 }
-await writeFile(join(here, '..', 'public', 'data', 'tournament-teams.json'), JSON.stringify({ generatedAt: new Date().toISOString(), teams: all }));
-console.log(`✓ public/data/tournament-teams.json (${all.length} equipos)`);
