@@ -6,6 +6,7 @@ import { PokemonSprite } from '../components/PokemonSprite';
 import { Dropdown } from '../components/Dropdown';
 import { MoveSearch } from '../components/MoveSearch';
 import { ItemSearch } from '../components/ItemSearch';
+import { SegmentedControl } from '../components/SegmentedControl';
 import { calcMove, emptySide, type CalcMon, type FieldState } from '../lib/damageCalc';
 import { calcAllStats, getNatureMod } from '../lib/stats';
 import { loadMetaBuilds } from '../lib/metaBuilds';
@@ -232,11 +233,16 @@ export function OptimizerView({ data }: Props) {
       </div>
 
       {/* Pestañas */}
-      <div className="inline-flex gap-1 mb-4 p-1 rounded-xl bg-poke-dark/50 border border-poke-accent/40">
-        {([['speed', '🏃 ' + t('Velocidad')], ['defense', '🛡️ ' + t('Defensa')], ['offense', '⚔️ ' + t('Ataque')]] as const).map(([id, label]) => (
-          <button key={id} type="button" onClick={() => setTab(id)} className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${tab === id ? 'bg-poke-pink text-white' : 'text-gray-400 hover:bg-poke-accent/40'}`}>{label}</button>
-        ))}
-      </div>
+      <SegmentedControl
+        className="mb-4 max-w-md"
+        value={tab}
+        onChange={setTab}
+        options={[
+          { value: 'speed', label: <>🏃 {t('Velocidad')}</> },
+          { value: 'defense', label: <>🛡️ {t('Defensa')}</> },
+          { value: 'offense', label: <>⚔️ {t('Ataque')}</> },
+        ]}
+      />
 
       {tab === 'speed' && <SpeedTool data={data} mon={mon} t={t} />}
       {tab === 'defense' && <DefenseTool data={data} mon={mon} t={t} lang={lang} />}

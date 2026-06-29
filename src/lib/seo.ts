@@ -83,6 +83,16 @@ const ROUTE_META: Record<string, RouteMeta> = {
       en: 'Pokémon Champions tournament teams (Reg M-A/M-B): browse by event or Pokémon and import them to your team.',
     },
   },
+  '/dex': {
+    title: {
+      es: 'Pokédex del formato VGC — Pokémon Champions Team Lab',
+      en: 'Format Pokédex VGC — Pokémon Champions Team Lab',
+    },
+    desc: {
+      es: 'Filtra los Pokémon legales de Pokémon Champions por movimientos que aprenden, tipos, habilidad y estadísticas base.',
+      en: 'Filter legal Pokémon Champions species by learnable moves, types, ability and base stats.',
+    },
+  },
   '/optimizer': {
     title: {
       es: 'Optimizador de EVs VGC — Pokémon Champions Team Lab',

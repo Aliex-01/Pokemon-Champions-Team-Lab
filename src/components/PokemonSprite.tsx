@@ -7,12 +7,15 @@ interface PokemonSpriteProps {
   speciesId: string;
   className?: string;
   alt?: string;
+  /** Muestra un placeholder con shimmer mientras la imagen carga. */
+  skeleton?: boolean;
 }
 
-export function PokemonSprite({ speciesId, className = 'w-12 h-12 object-contain', alt = '' }: PokemonSpriteProps) {
+export function PokemonSprite({ speciesId, className = 'w-12 h-12 object-contain', alt = '', skeleton = false }: PokemonSpriteProps) {
   const urls = getSpriteUrls(speciesId);
   const [urlIndex, setUrlIndex] = useState(0);
   const [prevId, setPrevId] = useState(speciesId);
+  const [loaded, setLoaded] = useState(false);
   // URL que ya cargó bien: para ignorar errores espurios que el navegador
   // dispara al re-renderizar/relayout (p. ej. al cambiar el objeto del rival).
   const loadedSrc = useRef<string | null>(null);
@@ -22,6 +25,7 @@ export function PokemonSprite({ speciesId, className = 'w-12 h-12 object-contain
   if (prevId !== speciesId) {
     setPrevId(speciesId);
     setUrlIndex(0);
+    setLoaded(false);
     loadedSrc.current = null;
   }
 
@@ -30,16 +34,30 @@ export function PokemonSprite({ speciesId, className = 'w-12 h-12 object-contain
   }
 
   const src = urls[urlIndex];
+  const onLoad = () => { loadedSrc.current = src; setLoaded(true); };
+  const onError = () => { if (loadedSrc.current !== src) setUrlIndex((i) => i + 1); };
+
+  if (!skeleton) {
+    return (
+      <img src={src} alt={alt} className={className} loading="lazy" decoding="async" onLoad={onLoad} onError={onError} />
+    );
+  }
+
+  // Variante con placeholder: contenedor con el tamaño, shimmer detrás y la
+  // imagen encima (oculta hasta que carga).
   return (
-    <img
-      src={src}
-      alt={alt}
-      className={className}
-      loading="lazy"
-      decoding="async"
-      onLoad={() => { loadedSrc.current = src; }}
-      onError={() => { if (loadedSrc.current !== src) setUrlIndex((i) => i + 1); }}
-    />
+    <span className={`relative block ${className}`}>
+      {!loaded && <span className="skeleton absolute inset-0 rounded-lg" />}
+      <img
+        src={src}
+        alt={alt}
+        className={`w-full h-full object-contain transition-opacity duration-200 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+        loading="lazy"
+        decoding="async"
+        onLoad={onLoad}
+        onError={onError}
+      />
+    </span>
   );
 }
 

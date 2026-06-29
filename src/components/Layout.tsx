@@ -43,6 +43,7 @@ const NAV_ITEMS = [
   { to: '/', label: 'Equipo', end: true },
   { to: '/speed', label: 'Speed Tier' },
   { to: '/builds', label: 'Builds Meta' },
+  { to: '/dex', label: 'Pokédex' },
   { to: '/coverage', label: 'Cobertura' },
   { to: '/damage', label: 'Calculadora' },
   { to: '/optimizer', label: 'Optimizador', beta: true },
