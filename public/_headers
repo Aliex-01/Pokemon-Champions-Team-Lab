@@ -10,6 +10,7 @@
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
 
-# Datos que se refrescan cada semana → caché corta.
+# Datos que se refrescan a diario → revalidar siempre con el servidor (vía ETag):
+# así nunca se sirve una versión vieja, y si no cambió responde 304 (eficiente).
 /data/*
-  Cache-Control: public, max-age=3600
+  Cache-Control: no-cache
