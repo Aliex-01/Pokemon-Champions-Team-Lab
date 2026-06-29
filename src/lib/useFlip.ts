@@ -9,13 +9,16 @@ import { useLayoutEffect, useRef } from 'react';
  * Cada hijo a animar debe tener un atributo `data-flip-id` único.
  * Devuelve un ref para el contenedor del grid/lista.
  */
-export function useFlip<T extends HTMLElement = HTMLDivElement>(deps: unknown) {
+export function useFlip<T extends HTMLElement = HTMLDivElement>(deps: unknown, enabled = true) {
   const containerRef = useRef<T>(null);
   const prevRects = useRef<Map<string, DOMRect>>(new Map());
 
   useLayoutEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+    // Desactivado (p. ej. listas grandes): no medimos ni animamos. Olvidamos las
+    // posiciones para que al reactivar no se anime un salto con datos viejos.
+    if (!enabled) { prevRects.current = new Map(); return; }
 
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const prev = prevRects.current;
@@ -58,7 +61,7 @@ export function useFlip<T extends HTMLElement = HTMLDivElement>(deps: unknown) {
     });
 
     prevRects.current = next;
-  }, [deps]);
+  }, [deps, enabled]);
 
   return containerRef;
 }

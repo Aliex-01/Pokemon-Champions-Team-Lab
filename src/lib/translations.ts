@@ -146,6 +146,10 @@ export const TRANSLATIONS: Record<string, string> = {
   'Reemplazar equipo activo': 'Replace active team',
   'Sobrescribe los 6 slots del equipo actual.': 'Overwrites all 6 slots of the current team.',
   'Exportar a Showdown': 'Export to Showdown',
+  'Completo': 'Full',
+  'Lista abierta': 'Open sheet',
+  'Crear Poképaste': 'Create Poképaste',
+  'No se pudo cargar el Poképaste.': 'Could not load the Poképaste.',
   Copiar: 'Copy',
   '¡Copiado!': 'Copied!',
   'No se reconoció ningún Pokémon. Pega un equipo en formato Showdown.':

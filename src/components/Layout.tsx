@@ -1,4 +1,4 @@
-import { useState, Suspense } from 'react';
+import { useState, useRef, useLayoutEffect, Suspense } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { Logo } from './Logo';
 import { useTeam } from '../store/teamStore';
@@ -63,8 +63,25 @@ const visibleNavItems = (isAdmin: boolean) => NAV_ITEMS.filter((i) => !i.dev || 
 // Enlaces de navegación, reutilizados en la barra de escritorio y en el menú móvil.
 function NavLinks({ t, onNavigate }: { t: (s: string) => string; onNavigate?: () => void }) {
   const { user } = useAuth();
+  const location = useLocation();
+  const ref = useRef<HTMLDivElement>(null);
+  // Indicador deslizante: se mide sobre el enlace activo y se anima a su posición.
+  const [ind, setInd] = useState({ top: 0, height: 0, show: false });
+
+  useLayoutEffect(() => {
+    const c = ref.current;
+    const el = c?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (c && el) setInd({ top: el.offsetTop, height: el.offsetHeight, show: true });
+    else setInd((s) => ({ ...s, show: false }));
+  }, [location.pathname, user?.isAdmin]);
+
   return (
-    <>
+    <div ref={ref} className="relative flex flex-col gap-1">
+      <span
+        aria-hidden
+        className={`absolute left-0 right-0 z-0 rounded-lg bg-poke-pink/20 border border-poke-pink/30 transition-all duration-300 ease-out ${ind.show ? 'opacity-100' : 'opacity-0'}`}
+        style={{ top: ind.top, height: ind.height }}
+      />
       {visibleNavItems(!!user?.isAdmin).map(({ to, label, end, beta }) => (
         <NavLink
           key={to}
@@ -72,7 +89,7 @@ function NavLinks({ t, onNavigate }: { t: (s: string) => string; onNavigate?: ()
           end={end}
           onClick={onNavigate}
           className={({ isActive }) =>
-            `nav-link w-full justify-start inline-flex items-center gap-1.5 whitespace-nowrap ${isActive ? 'nav-link-active' : ''}`
+            `nav-link relative z-10 w-full justify-start inline-flex items-center gap-1.5 whitespace-nowrap ${isActive ? 'nav-link-active' : ''}`
           }
         >
           {t(label)}
@@ -83,7 +100,7 @@ function NavLinks({ t, onNavigate }: { t: (s: string) => string; onNavigate?: ()
           )}
         </NavLink>
       ))}
-    </>
+    </div>
   );
 }
 
@@ -213,7 +230,7 @@ export function Layout() {
             </div>
           }
         >
-          <div key={location.pathname}>
+          <div key={location.pathname} className="route-enter">
             <Outlet />
           </div>
         </Suspense>

@@ -158,45 +158,12 @@ export function SpeedTierView({ data }: SpeedTierProps) {
   };
   const resetCustom = () => { setUserInclude(new Set()); setUserExclude(new Set()); };
 
-  const benchmarks = showNeutral ? BENCHMARKS : BENCHMARKS.filter((b) => !b.neutral);
+  const benchmarks = useMemo(() => (showNeutral ? BENCHMARKS : BENCHMARKS.filter((b) => !b.neutral)), [showNeutral]);
 
-  const { groups, summary, shownIds } = useMemo<{ groups: GroupRow[]; summary: TeamSummary[]; shownIds: Set<string> }>(() => {
+  // Entradas de referencia (benchmarks). NO dependen de Tailwind/clima/TR/unburden,
+  // así que se calculan una vez y no se rehacen en cada toggle del entorno.
+  const benchmarkEntries = useMemo<Entry[]>(() => {
     const entries: Entry[] = [];
-
-    // Tus Pokémon con la velocidad de su spread (Tailwind y clima solo afectan aquí).
-    for (const p of activeTeam?.pokemon ?? []) {
-      if (!p.speciesId) continue;
-      const sp = getSpecies(p.speciesId);
-      if (!sp) continue;
-      const baseSpe = calcAllStats(sp.baseStats, p.evs, p.ivs, p.nature, 50, p.evMode ?? 'champions').spe;
-      const weatherBoost = weather !== 'none' && p.ability === WEATHER_SPEED_ABILITY[weather];
-      const unburdenBoost = unburden && p.ability === 'Unburden';
-      const envMult = (tailwind ? 2 : 1) * (weatherBoost ? 2 : 1) * (unburdenBoost ? 2 : 1);
-      const baseTags = [
-        `${p.nature}${p.evs.spe ? ` · ${p.evs.spe} Spe` : ''}`,
-        tailwind ? '+Tailwind' : '',
-        weatherBoost ? `+${WEATHER_LABEL[weather].split(' ')[1]}` : '',
-        unburdenBoost ? `+${localizeName('abilities', 'Unburden', lang)}` : '',
-      ].filter(Boolean).join(' ');
-
-      // Con Choice Scarf: dos filas (con la Scarf y sin ella, por Desarme/Truco).
-      const scarfVariants = p.item === 'Choice Scarf'
-        ? [{ mult: 1.5, label: ' · con Scarf' }, { mult: 1, label: ' · sin Scarf' }]
-        : [{ mult: 1, label: '' }];
-
-      for (const sv of scarfVariants) {
-        entries.push({
-          key: `team-${p.slotId}${sv.label}`,
-          name: p.speciesName,
-          speciesId: p.speciesId,
-          types: sp.types,
-          baseSpe: sp.baseStats.spe,
-          speed: Math.floor(baseSpe * envMult * sv.mult),
-          variant: `${baseTags}${sv.label}`,
-          isTeam: true,
-        });
-      }
-    }
 
     // Pokémon de referencia incluidos (S/A/B + extras, sin exclusiones ni colapsos especiales).
     const isIncluded = (sp: ChampionsData['species'][number]) =>
@@ -332,6 +299,49 @@ export function SpeedTierView({ data }: SpeedTierProps) {
       }
     }
 
+    return entries;
+  }, [data, benchmarks, showAbilities, showScarf, builds, userInclude, userExclude]);
+
+  const { groups, summary, shownIds } = useMemo<{ groups: GroupRow[]; summary: TeamSummary[]; shownIds: Set<string> }>(() => {
+    const entries: Entry[] = [];
+
+    // Tus Pokémon con la velocidad de su spread (Tailwind y clima solo afectan aquí).
+    for (const p of activeTeam?.pokemon ?? []) {
+      if (!p.speciesId) continue;
+      const sp = getSpecies(p.speciesId);
+      if (!sp) continue;
+      const baseSpe = calcAllStats(sp.baseStats, p.evs, p.ivs, p.nature, 50, p.evMode ?? 'champions').spe;
+      const weatherBoost = weather !== 'none' && p.ability === WEATHER_SPEED_ABILITY[weather];
+      const unburdenBoost = unburden && p.ability === 'Unburden';
+      const envMult = (tailwind ? 2 : 1) * (weatherBoost ? 2 : 1) * (unburdenBoost ? 2 : 1);
+      const baseTags = [
+        `${p.nature}${p.evs.spe ? ` · ${p.evs.spe} Spe` : ''}`,
+        tailwind ? '+Tailwind' : '',
+        weatherBoost ? `+${WEATHER_LABEL[weather].split(' ')[1]}` : '',
+        unburdenBoost ? `+${localizeName('abilities', 'Unburden', lang)}` : '',
+      ].filter(Boolean).join(' ');
+
+      // Con Choice Scarf: dos filas (con la Scarf y sin ella, por Desarme/Truco).
+      const scarfVariants = p.item === 'Choice Scarf'
+        ? [{ mult: 1.5, label: ' · con Scarf' }, { mult: 1, label: ' · sin Scarf' }]
+        : [{ mult: 1, label: '' }];
+
+      for (const sv of scarfVariants) {
+        entries.push({
+          key: `team-${p.slotId}${sv.label}`,
+          name: p.speciesName,
+          speciesId: p.speciesId,
+          types: sp.types,
+          baseSpe: sp.baseStats.spe,
+          speed: Math.floor(baseSpe * envMult * sv.mult),
+          variant: `${baseTags}${sv.label}`,
+          isTeam: true,
+        });
+      }
+    }
+
+    entries.push(...benchmarkEntries);
+
     const out: GroupRow[] = [];
 
     // Tus Pokémon siempre en filas en solitario.
@@ -404,7 +414,7 @@ export function SpeedTierView({ data }: SpeedTierProps) {
     const shownIds = new Set(entries.filter((e) => !e.isTeam).map((e) => e.speciesId));
 
     return { groups: out, summary, shownIds };
-  }, [data, activeTeam, tailwind, weather, trickRoom, unburden, lang, benchmarks, showAbilities, showScarf, builds, userInclude, userExclude]);
+  }, [activeTeam, tailwind, weather, trickRoom, unburden, lang, benchmarkEntries]);
 
   const maxSpeed = Math.max(1, ...groups.map((g) => g.speed));
 

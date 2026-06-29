@@ -234,6 +234,7 @@ export function OptimizerView({ data }: Props) {
 
       {/* Pestañas */}
       <SegmentedControl
+        fluid
         className="mb-4 max-w-md"
         value={tab}
         onChange={setTab}

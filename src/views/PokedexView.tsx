@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { memo, useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { getLearnset, localizeName } from '../lib/championsData';
 import { PokemonSprite } from '../components/PokemonSprite';
 import { MoveSearch } from '../components/MoveSearch';
@@ -57,8 +57,10 @@ function StatBar({ label, value, displayValue, animate, delay }: { label: string
 function useCountUp(target: number, active: boolean, duration = 650): number {
   const [val, setVal] = useState(() => (active ? 0 : target));
   useEffect(() => {
-    if (!active || window.matchMedia('(prefers-reduced-motion: reduce)').matches) { setVal(target); return; }
-    setVal(0);
+    if (!active || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      const id = requestAnimationFrame(() => setVal(target));
+      return () => cancelAnimationFrame(id);
+    }
     let raf = 0;
     const start = performance.now();
     const tick = (now: number) => {
@@ -83,6 +85,50 @@ function CountUpStatBar({ label, value, delay }: { label: string; value: number;
 function CountUp({ value }: { value: number }) {
   return <>{useCountUp(value, true)}</>;
 }
+
+/** Card del grid, memoizada: no se re-renderiza al teclear en el buscador.
+ *  `cv-card` salta su render cuando está fuera de pantalla. */
+const PokedexCard = memo(function PokedexCard({ s, isMega, onSelect }: { s: SpeciesData; isMega: boolean; onSelect: (s: SpeciesData) => void }) {
+  const { t, lang } = useLang();
+  const abilityLabel = (a: string) => localizeName('abilities', a, lang);
+  return (
+    <div
+      data-flip-id={s.id}
+      role="button"
+      tabIndex={0}
+      onClick={() => onSelect(s)}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(s); } }}
+      className="cv-card panel p-3 flex items-center gap-3 group cursor-pointer transition-transform duration-150 hover:-translate-y-0.5 hover:border-poke-pink/50 hover:shadow-poke-pink/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-poke-pink/60"
+    >
+      <PokemonSprite speciesId={s.id} skeleton className="w-14 h-14 object-contain shrink-0 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-3" alt={s.name} />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          <span className="font-semibold text-white truncate">{s.name}</span>
+          <span className="text-[10px] text-gray-500">#{s.num}</span>
+          {isMega && (
+            <span className="mega-badge ml-auto shrink-0 text-[9px] font-bold tracking-wide px-1.5 py-0.5 rounded bg-gradient-to-r from-poke-pink to-purple-500 text-white">
+              MEGA
+            </span>
+          )}
+        </div>
+        <div className="flex gap-1 mt-0.5">
+          {s.types.map((tp) => (
+            <span key={tp} className={`type-${tp.toLowerCase()} px-1.5 py-0.5 rounded text-[10px] font-medium`}>{t(tp)}</span>
+          ))}
+        </div>
+        <div className="text-[10px] text-gray-400 mt-0.5 truncate">
+          {s.abilities.map(abilityLabel).join(' · ')}
+        </div>
+        <div className="mt-1.5 flex flex-col gap-0.5">
+          {STAT_KEYS.map((k, i) => <StatBar key={k} label={t(STAT_LABEL[k])} value={s.baseStats[k]} animate delay={i * 40} />)}
+        </div>
+        <div className="text-[10px] mt-1 text-right">
+          <span className="text-gray-500">BST</span> <span className="text-poke-pink font-semibold">{bst(s)}</span>
+        </div>
+      </div>
+    </div>
+  );
+});
 
 export function PokedexView({ data }: PokedexViewProps) {
   const { t, lang } = useLang();
@@ -123,12 +169,15 @@ export function PokedexView({ data }: PokedexViewProps) {
     [data]
   );
 
-  // Learnset por especie en un Set para comprobar pertenencia rápido.
+  // Learnset por especie en un Set. Solo se construye cuando hay filtro de
+  // movimientos activo (evita crear ~240 Sets al montar sin necesidad).
+  const filteringMoves = selMoves.length > 0;
   const learnsetSets = useMemo(() => {
+    if (!filteringMoves) return null;
     const m = new Map<string, Set<string>>();
     for (const s of baseSpecies) m.set(s.id, new Set(getLearnset(s.id, data)));
     return m;
-  }, [baseSpecies, data]);
+  }, [baseSpecies, data, filteringMoves]);
 
   const results = useMemo(() => {
     const q = debouncedQuery.toLowerCase().trim().replace(/\s/g, '');
@@ -146,7 +195,7 @@ export function PokedexView({ data }: PokedexViewProps) {
         if (min > 0 && (k === 'bst' ? bst(s) : s.baseStats[k]) < min) return false;
       }
       if (selMoves.length) {
-        const ls = learnsetSets.get(s.id);
+        const ls = learnsetSets?.get(s.id);
         if (!ls || !selMoves.every((mid) => ls.has(mid))) return false;
       }
       return true;
@@ -185,7 +234,8 @@ export function PokedexView({ data }: PokedexViewProps) {
   const abilityLabel = (a: string) => localizeName('abilities', a, lang);
 
   // Los Pokémon que permanecen tras filtrar se deslizan a su nueva posición.
-  const gridRef = useFlip<HTMLDivElement>(results);
+  // Solo con listas pequeñas: medir cientos de cards en cada cambio sería caro.
+  const gridRef = useFlip<HTMLDivElement>(results, results.length <= 60);
 
   // Megas y learnset del Pokémon abierto en el detalle.
   const detailMegas = useMemo(
@@ -272,6 +322,7 @@ export function PokedexView({ data }: PokedexViewProps) {
           <div>
             <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">{t('Megaevolución')}</label>
             <SegmentedControl
+              fluid
               value={megaFilter}
               onChange={setMegaFilter}
               options={[
@@ -373,42 +424,7 @@ export function PokedexView({ data }: PokedexViewProps) {
           ) : (
             <div ref={gridRef} className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
               {results.map((s) => (
-                <div
-                  key={s.id}
-                  data-flip-id={s.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setSelected(s)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelected(s); } }}
-                  className="panel p-3 flex items-center gap-3 group cursor-pointer transition-transform duration-150 hover:-translate-y-0.5 hover:border-poke-pink/50 hover:shadow-poke-pink/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-poke-pink/60"
-                >
-                  <PokemonSprite speciesId={s.id} skeleton className="w-14 h-14 object-contain shrink-0 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-3" alt={s.name} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-semibold text-white truncate">{s.name}</span>
-                      <span className="text-[10px] text-gray-500">#{s.num}</span>
-                      {megaBaseIds.has(s.id) && (
-                        <span className="mega-badge ml-auto shrink-0 text-[9px] font-bold tracking-wide px-1.5 py-0.5 rounded bg-gradient-to-r from-poke-pink to-purple-500 text-white">
-                          MEGA
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex gap-1 mt-0.5">
-                      {s.types.map((tp) => (
-                        <span key={tp} className={`type-${tp.toLowerCase()} px-1.5 py-0.5 rounded text-[10px] font-medium`}>{t(tp)}</span>
-                      ))}
-                    </div>
-                    <div className="text-[10px] text-gray-400 mt-0.5 truncate">
-                      {s.abilities.map(abilityLabel).join(' · ')}
-                    </div>
-                    <div className="mt-1.5 flex flex-col gap-0.5">
-                      {STAT_KEYS.map((k, i) => <StatBar key={k} label={t(STAT_LABEL[k])} value={s.baseStats[k]} animate delay={i * 40} />)}
-                    </div>
-                    <div className="text-[10px] mt-1 text-right">
-                      <span className="text-gray-500">BST</span> <span className="text-poke-pink font-semibold">{bst(s)}</span>
-                    </div>
-                  </div>
-                </div>
+                <PokedexCard key={s.id} s={s} isMega={megaBaseIds.has(s.id)} onSelect={setSelected} />
               ))}
             </div>
           )}
