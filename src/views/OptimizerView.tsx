@@ -130,12 +130,13 @@ function SpeciesSearch({ data, value, onPick, placeholder }: { data: ChampionsDa
 }
 
 // Botón conmutable (pastilla) con estado activo, como las opciones de campo.
-function ToggleChip({ active, onClick, children, disabled }: { active: boolean; onClick: () => void; children: React.ReactNode; disabled?: boolean }) {
+function ToggleChip({ active, onClick, children, disabled, title }: { active: boolean; onClick: () => void; children: React.ReactNode; disabled?: boolean; title?: string }) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
+      title={title}
       className={`px-3 py-1.5 rounded-lg text-sm border transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100 ${active ? 'border-poke-pink bg-poke-pink/15 text-poke-pink' : 'border-poke-accent text-gray-300 hover:bg-poke-accent/40'}`}
     >
       {children}
