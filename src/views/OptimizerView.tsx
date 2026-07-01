@@ -78,9 +78,9 @@ function teamToCalc(p: TeamPokemon): CalcMon {
   };
 }
 
-function makeTarget(sp: SpeciesData, evs: EvSpread, nature: string, item = ''): CalcMon {
+function makeTarget(sp: SpeciesData, evs: EvSpread, nature: string, item = '', ability = ''): CalcMon {
   return {
-    speciesId: sp.id, speciesName: sp.name, level: 50, ability: sp.abilities[0] ?? '', item,
+    speciesId: sp.id, speciesName: sp.name, level: 50, ability: ability || sp.abilities[0] || '', item,
     nature, evMode: 'champions', evs, ivs: { ...DEFAULT_IVS },
     moves: ['', '', '', ''], boosts: { atk: 0, def: 0, spa: 0, spd: 0, spe: 0 }, status: '', alliesFainted: 0,
   };
@@ -346,6 +346,11 @@ function DefenseTool({ data, mon, t, lang }: { data: ChampionsData; mon: TeamPok
   const [hpMin, setHpMin] = useState(0);
   const [defMin, setDefMin] = useState(0);
   const [spdMin, setSpdMin] = useState(0);
+  const [atkAbility, setAtkAbility] = usePersistedState<string>('optimizer-def-ability', '');
+  // Objetivo del ataque: único (sin reducción) o área/doble (×0.75 para movimientos de área).
+  const [singleTarget, setSingleTarget] = usePersistedState<boolean>('optimizer-def-single', true);
+  // Habilidad efectiva del atacante (la elegida si es válida; si no, la primera).
+  const atkAbilityEff = atk && atk.abilities.includes(atkAbility) ? atkAbility : (atk?.abilities[0] ?? '');
 
   const learn = atk ? getLearnset(atk.id, data) : [];
   const move = moveId ? data.moveData?.[moveId] : undefined;
@@ -366,7 +371,8 @@ function DefenseTool({ data, mon, t, lang }: { data: ChampionsData; mon: TeamPok
     let aEvs = atkInvest === 'max' ? { ...ZERO_EVS, [atkStat]: 32 } : { ...ZERO_EVS };
     let aNat = atkNatureFav ? (atkStat === 'atk' ? NAT.atk : NAT.spa) : NAT.neutral;
     if (atkInvest === 'meta' && metaBuild?.spreads?.[0]) { aEvs = parseSpread(metaBuild.spreads[0].evs); aNat = metaBuild.spreads[0].nature; }
-    const attacker = makeTarget(atk, aEvs, aNat, atkItemEff);
+    const attacker = makeTarget(atk, aEvs, aNat, atkItemEff, atkAbilityEff);
+    const field: FieldState = { ...FIELD, singleTarget };
     const base = teamToCalc(mon);
     // La defensa que NO interviene en este ataque se fija a su mínimo.
     const otherStat = defStat === 'def' ? 'spd' : 'def';
@@ -375,7 +381,7 @@ function DefenseTool({ data, mon, t, lang }: { data: ChampionsData; mon: TeamPok
     const evsFor = (hp: number, dv: number) => ({ ...base.evs, hp, [defStat]: dv, [otherStat]: otherMin });
     // Sobrevivir N golpes: el daño máximo acumulado no llega al 100%.
     const survives = (hp: number, dv: number) => {
-      const r = calcMove(attacker, { ...base, evs: evsFor(hp, dv) }, moveId, FIELD, SIDE, SIDE);
+      const r = calcMove(attacker, { ...base, evs: evsFor(hp, dv) }, moveId, field, SIDE, SIDE);
       return r ? r.pctMax * hits < 100 : false;
     };
     // Mínimo total HP + defensa relevante (busca por presupuesto creciente), respetando suelos.
@@ -384,14 +390,14 @@ function DefenseTool({ data, mon, t, lang }: { data: ChampionsData; mon: TeamPok
         const dv = total - hp;
         if (dv > 32 || dv < relMin) continue;
         if (survives(hp, dv)) {
-          const r = calcMove(attacker, { ...base, evs: evsFor(hp, dv) }, moveId, FIELD, SIDE, SIDE);
+          const r = calcMove(attacker, { ...base, evs: evsFor(hp, dv) }, moveId, field, SIDE, SIDE);
           return { ok: true, hp, dv, total, pct: (r?.pctMax ?? 0) * hits };
         }
       }
     }
-    const worst = calcMove(attacker, { ...base, evs: evsFor(32, 32) }, moveId, FIELD, SIDE, SIDE);
+    const worst = calcMove(attacker, { ...base, evs: evsFor(32, 32) }, moveId, field, SIDE, SIDE);
     return { ok: false, pct: (worst?.pctMax ?? 0) * hits };
-  }, [atk, moveId, move, defStat, hits, hpMin, defMin, spdMin, atkItemEff, atkInvest, atkNatureFav, metaBuild, mon]);
+  }, [atk, moveId, move, defStat, hits, hpMin, defMin, spdMin, atkItemEff, atkInvest, atkNatureFav, atkAbilityEff, singleTarget, metaBuild, mon]);
 
   const defLabel = defStat === 'def' ? 'Def' : 'SpD';
 
@@ -401,9 +407,22 @@ function DefenseTool({ data, mon, t, lang }: { data: ChampionsData; mon: TeamPok
         <div className="text-xs text-gray-400 uppercase mb-1">{t('Atacante')}</div>
         <SpeciesSearch data={data} value={atk?.name ?? ''} onPick={(sp) => { setAtkId(sp.id); setMoveId(''); }} placeholder={t('Buscar atacante…')} />
         <div className="text-xs text-gray-400 uppercase mb-1 mt-2">{t('Movimiento')}</div>
-        <MoveSearch moves={learn} value={moveId} names={data.moveNames ?? {}} onPick={setMoveId} placeholder={t('Buscar movimiento…')} lang={lang} />
+        <div className="flex items-center gap-2">
+          <div className="flex-1 min-w-0">
+            <MoveSearch moves={learn} value={moveId} names={data.moveNames ?? {}} onPick={setMoveId} placeholder={t('Buscar movimiento…')} lang={lang} />
+          </div>
+          <ToggleChip active={!singleTarget} onClick={() => setSingleTarget((v) => !v)} title={t('Objetivo del ataque')}>
+            {singleTarget ? t('Único') : t('Área')}
+          </ToggleChip>
+        </div>
         <div className="text-xs text-gray-400 uppercase mb-1 mt-2">{t('Objeto del atacante')}</div>
         <ItemSearch items={OFFENSIVE_ITEMS.filter((i) => data.items.includes(i))} value={atkItemEff} onPick={setAtkItem} placeholder={t('Sin objeto')} lang={lang} disabled={atkInvest === 'meta'} clearable />
+        {atk && (
+          <>
+            <div className="text-xs text-gray-400 uppercase mb-1 mt-2">{t('Habilidad del rival')}</div>
+            <Dropdown value={atkAbilityEff} options={atk.abilities} render={(a) => localizeName('abilities', a, lang)} onChange={setAtkAbility} />
+          </>
+        )}
       </div>
       <div>
         <div className="text-xs text-gray-400 uppercase mb-1">{t('Aguantar')}</div>
