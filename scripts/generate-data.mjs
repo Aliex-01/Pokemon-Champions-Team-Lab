@@ -113,6 +113,18 @@ for (const s of dex.species.all()) {
   });
 }
 
+// Algunas megas referencian una forma base que no está en el formato (p. ej.
+// Floette-Mega → "Floette", pero aquí solo existe Floette-Eternal). Reapuntamos
+// la base a la forma presente con el mismo nº de Pokédex (arregla learnset, badge
+// de mega y stats del detalle).
+const presentIds = new Set(speciesList.map((s) => s.id));
+for (const s of speciesList) {
+  if (s.isMega && s.baseSpeciesId && !presentIds.has(s.baseSpeciesId)) {
+    const base = speciesList.find((x) => x.num === s.num && !x.isMega);
+    if (base) { s.baseSpeciesId = base.id; s.baseAbilities = base.abilities; }
+  }
+}
+
 speciesList.sort((a, b) => a.num - b.num || a.name.localeCompare(b.name));
 
 console.log(`Processing ${speciesList.length} species learnsets...`);
