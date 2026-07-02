@@ -3,6 +3,7 @@ import { useTeam } from '../store/teamStore';
 import { getSpecies } from '../lib/championsData';
 import { getTypeEffectiveness, TYPE_NAMES } from '../lib/typeChart';
 import { PokemonSprite } from '../components/PokemonSprite';
+import { InfoTooltip } from '../components/InfoTooltip';
 import { useLang } from '../lib/i18n';
 import type { ChampionsData } from '../types/pokemon';
 
@@ -75,7 +76,7 @@ function effClassOff(m: number): string {
 
 export function CoverageView({ data }: CoverageViewProps) {
   const { activeTeam } = useTeam();
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [mode, setMode] = useState<'def' | 'off'>('def');
 
   const team = useMemo(() => {
@@ -127,12 +128,29 @@ export function CoverageView({ data }: CoverageViewProps) {
   return (
     <div className="page-enter">
       <div className="mb-4">
-        <h2 className="text-2xl font-bold">{t('Cobertura de Tipos')}</h2>
+        <h2 className="text-2xl font-bold flex items-center gap-2">
+          {t('Cobertura de Tipos')}
+          <InfoTooltip side="bottom" label={t('Más información')}>
+            {lang === 'en'
+              ? 'Type coverage of your team: defensively, which types you are weak to; offensively, which types you hit super-effectively. Switch between both views below.'
+              : 'Cobertura de tipos de tu equipo: en defensa, a qué tipos eres débil; en ataque, a qué tipos golpeas supereficaz. Cambia entre ambas vistas abajo.'}
+          </InfoTooltip>
+        </h2>
       </div>
 
-      <div className="flex gap-2 mb-4">
+      <div className="flex items-center gap-2 mb-4">
         <button type="button" className={`px-4 py-2 rounded-lg ${mode === 'def' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setMode('def')}>{t('Defensiva')}</button>
+        <InfoTooltip label={t('Más información')}>
+          {lang === 'en'
+            ? 'Defensive coverage: which attacking types your team is weak to (how much damage each type deals against your Pokémon, abilities included).'
+            : 'Cobertura defensiva: a qué tipos de ataque es débil tu equipo (cuánto daño te hace cada tipo, habilidades incluidas).'}
+        </InfoTooltip>
         <button type="button" className={`px-4 py-2 rounded-lg ${mode === 'off' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setMode('off')}>{t('Ofensiva')}</button>
+        <InfoTooltip label={t('Más información')}>
+          {lang === 'en'
+            ? 'Offensive coverage: which types your team can hit super-effectively with its moves. Gaps are types nobody hits for 2×.'
+            : 'Cobertura ofensiva: a qué tipos golpea tu equipo de forma supereficaz con sus movimientos. Los huecos son tipos que nadie golpea ×2.'}
+        </InfoTooltip>
       </div>
 
       {team.length === 0 ? (

@@ -3,6 +3,7 @@ import { useTeam } from '../store/teamStore';
 import { PokemonEditor } from '../components/PokemonEditor';
 import { Toast } from '../components/Toast';
 import { SegmentedControl } from '../components/SegmentedControl';
+import { InfoTooltip } from '../components/InfoTooltip';
 import { useLang } from '../lib/i18n';
 import { getSpecies } from '../lib/championsData';
 import { convertInvestment } from '../lib/stats';
@@ -26,7 +27,7 @@ export function TeamBuilder({ data }: TeamBuilderProps) {
   // Al cambiar de equipo, deseleccionar (sin hueco activo).
   const [prevTeamId, setPrevTeamId] = useState(activeTeam?.id);
 
-  const { t } = useLang();
+  const { t, lang } = useLang();
 
   if (!activeTeam) return null;
 
@@ -63,7 +64,14 @@ export function TeamBuilder({ data }: TeamBuilderProps) {
   return (
     <div className="page-enter">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold">{t('Constructor de Equipo')}</h2>
+        <h2 className="text-2xl font-bold flex items-center gap-2">
+          {t('Constructor de Equipo')}
+          <InfoTooltip side="bottom" label={t('Más información')}>
+            {lang === 'en'
+              ? 'Build your active team: pick species, ability, item, nature, moves and EVs for each of the 6 slots. Drag to reorder, and import/export in Showdown or Poképaste format.'
+              : 'Monta tu equipo activo: elige especie, habilidad, objeto, naturaleza, movimientos y EVs de cada uno de los 6 slots. Arrastra para reordenar, e importa/exporta en formato Showdown o Poképaste.'}
+          </InfoTooltip>
+        </h2>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mb-4">
@@ -121,7 +129,7 @@ export function TeamBuilder({ data }: TeamBuilderProps) {
 
 function ShowdownImport({ data }: { data: ChampionsData }) {
   const { setActiveTeamPokemon } = useTeam();
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState('');
   const [feedback, setFeedback] = useState('');
@@ -162,7 +170,14 @@ function ShowdownImport({ data }: { data: ChampionsData }) {
   return (
     <div className="panel p-4 mt-4">
       <div className="flex justify-between items-center">
-        <h3 className="font-semibold">{t('Importar desde Showdown')}</h3>
+        <h3 className="font-semibold flex items-center gap-1.5">
+          {t('Importar desde Showdown')}
+          <InfoTooltip label={t('Más información')}>
+            {lang === 'en'
+              ? 'Paste a team in Showdown format, or a pokepast.es URL, to load it into the active team.'
+              : 'Pega un equipo en formato Showdown, o una URL de pokepast.es, para cargarlo en el equipo activo.'}
+          </InfoTooltip>
+        </h3>
         <button type="button" className="btn-secondary text-sm min-w-[96px] text-center" onClick={() => setOpen((o) => !o)}>
           {open ? t('Cerrar') : t('Importar')}
         </button>
@@ -189,7 +204,7 @@ function ShowdownImport({ data }: { data: ChampionsData }) {
 }
 
 function ShowdownExport({ team, data }: { team: SavedTeam; data: ChampionsData }) {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [copied, setCopied] = useState(false);
   const [open, setOpen] = useState(false);
   // 'full' = todo (EVs, naturaleza…); 'open' = lista abierta (sin EVs/naturaleza).
@@ -258,7 +273,14 @@ function ShowdownExport({ team, data }: { team: SavedTeam; data: ChampionsData }
   return (
     <div className="panel p-4 mt-4">
       <div className="flex justify-between items-center gap-2 flex-wrap">
-        <h3 className="font-semibold">{t('Exportar a Showdown')}</h3>
+        <h3 className="font-semibold flex items-center gap-1.5">
+          {t('Exportar a Showdown')}
+          <InfoTooltip label={t('Más información')}>
+            {lang === 'en'
+              ? 'Copy the team in Showdown format, or create a Poképaste (a shareable pokepast.es link). “Open list” omits EVs, IVs and items.'
+              : 'Copia el equipo en formato Showdown, o crea un Poképaste (enlace de pokepast.es para compartir). «Lista abierta» omite EVs, IVs y objetos.'}
+          </InfoTooltip>
+        </h3>
         <div className="flex items-center gap-2 flex-wrap">
           <SegmentedControl
             value={mode}

@@ -5,6 +5,7 @@ import { formatNatureLabel } from '../lib/stats';
 import { loadMetaBuilds } from '../lib/metaBuilds';
 import { PokemonSprite, ItemSprite } from '../components/PokemonSprite';
 import { useLang } from '../lib/i18n';
+import { InfoTooltip } from '../components/InfoTooltip';
 import type { ChampionsData, MetaBuildsData, EvSpread, MetaBuildEntry } from '../types/pokemon';
 
 interface BuildsViewProps {
@@ -127,7 +128,14 @@ export function BuildsView({ data }: BuildsViewProps) {
   return (
     <div className="page-enter">
       <div className="mb-4">
-        <h2 className="text-2xl font-bold">{t('Builds Meta')}</h2>
+        <h2 className="text-2xl font-bold flex items-center gap-2">
+          {t('Builds Meta')}
+          <InfoTooltip side="bottom" label={t('Más información')}>
+            {lang === 'en'
+              ? 'These sets come from real Smogon usage stats (the most-used ability, item, nature, EVs, moves and teammates for each Pokémon), not hand-picked builds.'
+              : 'Estos sets salen del uso real en las estadísticas de Smogon (la habilidad, objeto, naturaleza, EVs, movimientos y compañeros más usados de cada Pokémon), no son builds elegidos a mano.'}
+          </InfoTooltip>
+        </h2>
         {builds && !builds.format.includes('regmb') && (
           <p className="text-xs text-amber-400 mt-1">{t('Reg M-B aún no publicada en Smogon: mostrando Reg M-A.')}</p>
         )}

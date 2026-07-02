@@ -4,6 +4,7 @@ import { getSpecies, getSpeciesByName } from '../lib/championsData';
 import { getTypeEffectiveness, TYPE_NAMES } from '../lib/typeChart';
 import { loadMetaBuilds } from '../lib/metaBuilds';
 import { PokemonSprite } from '../components/PokemonSprite';
+import { InfoTooltip } from '../components/InfoTooltip';
 import { useLang } from '../lib/i18n';
 import type { ChampionsData, MetaBuildsData } from '../types/pokemon';
 
@@ -154,7 +155,7 @@ function CountUp({ value, className }: { value: number; className?: string }) {
 
 export function TeamAnalysisView({ data }: Props) {
   const { activeTeam } = useTeam();
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const tc = data.typeChart;
   const [meta, setMeta] = useState<MetaBuildsData | null>(null);
   // Tras el primer frame las barras pasan de 0 a su valor (crecen al entrar);
@@ -426,7 +427,16 @@ export function TeamAnalysisView({ data }: Props) {
   if (analysis.mons.length === 0) {
     return (
       <div className="page-enter">
-        <div className="mb-4"><h2 className="text-2xl font-bold">{t('Análisis del Equipo')}</h2></div>
+        <div className="mb-4">
+          <h2 className="text-2xl font-bold flex items-center gap-2">
+            {t('Análisis del Equipo')}
+            <InfoTooltip label={t('Más información')} side="bottom">
+              {lang === 'en'
+                ? 'Team archetype: the game plan we infer from your team (Trick Room, Tailwind, Weather/Terrain, Hyper Offense or Balanced), scored from your speed-control moves, average Speed and abilities. A secondary "support" plan is shown when another strategy also has weight.'
+                : 'Arquetipo del equipo: el plan de juego que deducimos de tu equipo (Trick Room, Tailwind, Clima/Terreno, Hiperofensivo o Equilibrado), puntuado según tus movimientos de control de velocidad, la velocidad media y las habilidades. Se muestra un plan «apoyo» secundario cuando otra estrategia también tiene peso.'}
+            </InfoTooltip>
+          </h2>
+        </div>
         <div className="panel p-6 text-gray-400 text-center">{t('Añade Pokémon a tu equipo para ver el análisis.')}</div>
       </div>
     );
@@ -465,6 +475,11 @@ export function TeamAnalysisView({ data }: Props) {
       {/* Cabecera con arquetipo y puntuación */}
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <h2 className="text-2xl font-bold">{t('Análisis del Equipo')}</h2>
+        <InfoTooltip label={t('Más información')} side="bottom">
+          {lang === 'en'
+            ? 'Team archetype: the game plan we infer from your team (Trick Room, Tailwind, Weather/Terrain, Hyper Offense or Balanced), scored from your speed-control moves, average Speed and abilities. A secondary "support" plan is shown when another strategy also has weight.'
+            : 'Arquetipo del equipo: el plan de juego que deducimos de tu equipo (Trick Room, Tailwind, Clima/Terreno, Hiperofensivo o Equilibrado), puntuado según tus movimientos de control de velocidad, la velocidad media y las habilidades. Se muestra un plan «apoyo» secundario cuando otra estrategia también tiene peso.'}
+        </InfoTooltip>
         <span
           key={analysis.archetype.key}
           className="pop-in px-3 py-1 rounded-full bg-poke-accent/60 text-sm font-medium border border-poke-pink/30"
@@ -493,7 +508,13 @@ export function TeamAnalysisView({ data }: Props) {
         {/* ── Resumen: puntuación + avisos ── */}
         {/* Puntuación por categorías (#3) */}
         <div className="panel p-4 animate-fade-in-up">
-          <h3 className="font-semibold mb-3">📊 {t('Puntuación por categoría')}</h3>
+          <h3 className="font-semibold mb-3 inline-flex items-center gap-1.5">📊 {t('Puntuación por categoría')}
+            <InfoTooltip label={t('Más información')} side="bottom">
+              {lang === 'en'
+                ? 'Category score: your team rated out of 25 in each of Speed (speed control + priority), Offensive coverage (types you hit super-effectively), Defensive solidity (shared weaknesses and unresisted types) and Utility (Fake Out, redirection, recovery, screens…). They add up to the /100 total.'
+                : 'Puntuación por categoría: tu equipo valorado sobre 25 en Velocidad (control de velocidad + prioridad), Cobertura ofensiva (tipos que golpeas supereficaz), Solidez defensiva (debilidades compartidas y tipos sin resistir) y Utilidad (Fake Out, redirección, recuperación, pantallas…). Suman el total /100.'}
+            </InfoTooltip>
+          </h3>
           <div className="space-y-2.5">
             {(['speed', 'offense', 'defense', 'utility'] as const).map((k, idx) => (
               <div key={k}>
@@ -517,7 +538,13 @@ export function TeamAnalysisView({ data }: Props) {
 
         {/* Avisos */}
         <div className="panel p-4 animate-fade-in-up" style={{ animationDelay: '40ms' }}>
-          <h3 className="font-semibold mb-2 text-poke-pink">⚠ {t('Avisos')}</h3>
+          <h3 className="font-semibold mb-2 text-poke-pink inline-flex items-center gap-1.5">⚠ {t('Avisos')}
+            <InfoTooltip label={t('Más información')} side="bottom">
+              {lang === 'en'
+                ? 'Warnings: automatic checks that flag common gaps — no speed control, no priority, no redirection/area protection, no Fake Out, shared weaknesses, missing a physical or special attacker, no Protect, too many slow mons without Trick Room, or repeated items.'
+                : 'Avisos: comprobaciones automáticas que señalan huecos habituales — sin control de velocidad, sin prioridad, sin redirección/protección de área, sin Fake Out, debilidades compartidas, falta de atacante físico o especial, sin Protección, demasiados lentos sin Trick Room u objetos repetidos.'}
+            </InfoTooltip>
+          </h3>
           {analysis.warnings.length === 0 ? (
             <p className="text-sm text-green-400">{t('Sin huecos evidentes. ¡Buen equipo!')} 🎉</p>
           ) : (
@@ -533,7 +560,13 @@ export function TeamAnalysisView({ data }: Props) {
         {/* Roles */}
         <div className="panel p-4 lg:col-span-2 animate-fade-in-up" style={{ animationDelay: '80ms' }}>
           <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-            <h3 className="font-semibold">🧩 {t('Roles')}</h3>
+            <h3 className="font-semibold inline-flex items-center gap-1.5">🧩 {t('Roles')}
+              <InfoTooltip label={t('Más información')}>
+                {lang === 'en'
+                  ? 'Roles: labels for what each Pokémon does, grouped by color — Offense, Defense, Speed and Support. They are inferred from base stats, EV investment, item, ability and moves (e.g. Physical, Setup, Wall, Fake Out, Redirection, Pivot).'
+                  : 'Roles: etiquetas de lo que hace cada Pokémon, agrupadas por color — Ofensiva, Defensa, Velocidad y Apoyo. Se deducen de las estadísticas base, la inversión de EVs, el objeto, la habilidad y los movimientos (p. ej. Físico, Setup, Muro, Fake Out, Redirección, Pivote).'}
+              </InfoTooltip>
+            </h3>
             <div className="flex flex-wrap gap-2">
               {(Object.keys(ROLE_KIND_LABEL) as RoleKind[]).map((k) => (
                 <span key={k} className="inline-flex items-center gap-1 text-[10px] text-gray-400">
@@ -566,7 +599,13 @@ export function TeamAnalysisView({ data }: Props) {
         {/* ── Análisis de tipos y utilidad ── */}
         {/* Cobertura resumida */}
         <div className="panel p-4 lg:col-span-2 animate-fade-in-up" style={{ animationDelay: '120ms' }}>
-          <h3 className="font-semibold mb-3">🛡️ {t('Cobertura de Tipos')}</h3>
+          <h3 className="font-semibold mb-3 inline-flex items-center gap-1.5">🛡️ {t('Cobertura de Tipos')}
+            <InfoTooltip label={t('Más información')}>
+              {lang === 'en'
+                ? 'Type coverage: shared weaknesses (attacking types that hit 2+ of your Pokémon super-effectively), types nobody on the team resists or is immune to, and offensive gaps (types no move of yours hits super-effectively). Hover a type to highlight who is weak to it.'
+                : 'Cobertura de tipos: debilidades compartidas (tipos de ataque que golpean supereficaz a 2+ de tus Pokémon), tipos que nadie del equipo resiste ni es inmune, y huecos ofensivos (tipos que ningún movimiento tuyo golpea supereficaz). Pasa el ratón por un tipo para resaltar a quién le hace débil.'}
+            </InfoTooltip>
+          </h3>
           <div className="grid sm:grid-cols-3 gap-4 text-sm">
             <div>
               <div className="text-gray-400 mb-1.5">{t('Debilidades compartidas (2+):')}</div>
@@ -600,7 +639,13 @@ export function TeamAnalysisView({ data }: Props) {
 
         {/* Utilidad */}
         <div className="panel p-4 lg:col-span-2 animate-fade-in-up" style={{ animationDelay: '160ms' }}>
-          <h3 className="font-semibold mb-2">🔧 {t('Utilidad y Control')}</h3>
+          <h3 className="font-semibold mb-2 inline-flex items-center gap-1.5">🔧 {t('Utilidad y Control')}
+            <InfoTooltip label={t('Más información')}>
+              {lang === 'en'
+                ? 'Utility and control: which Pokémon provide each key doubles tool — Fake Out, redirection, area protection, Intimidate, ally support, Tailwind, Trick Room, speed lowering, weather and terrain. A dash means nobody on the team provides it.'
+                : 'Utilidad y control: qué Pokémon aportan cada herramienta clave en dobles — Fake Out, redirección, protección de área, Intimidación, apoyo a aliado, Tailwind, Trick Room, ralentizar, clima y terreno. Un guion significa que nadie del equipo lo aporta.'}
+            </InfoTooltip>
+          </h3>
           <div className="grid sm:grid-cols-2 gap-x-6">
             <div>
               <UtilRow label={t('Fake Out')} mons={analysis.fakeOut} />
@@ -622,7 +667,13 @@ export function TeamAnalysisView({ data }: Props) {
         {/* ── Sinergias y contexto del meta ── */}
         {/* Sinergias (#6) */}
         <div className="panel p-4 lg:col-span-2 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
-          <h3 className="font-semibold mb-2">✨ {t('Sinergias')}</h3>
+          <h3 className="font-semibold mb-2 inline-flex items-center gap-1.5">✨ {t('Sinergias')}
+            <InfoTooltip label={t('Más información')}>
+              {lang === 'en'
+                ? 'Synergies: ability and move combinations that reinforce each other (weather + abusers, terrains, multiple Intimidate, redirection protecting your frailer mons). Anti-synergies flag things that cancel out, like two different weathers or terrains.'
+                : 'Sinergias: combinaciones de habilidades y movimientos que se refuerzan (clima + abusadores, terrenos, varios Intimidación, redirección que protege a tus frágiles). Las anti-sinergias avisan de lo que se anula, como dos climas o terrenos distintos.'}
+            </InfoTooltip>
+          </h3>
           {analysis.synergies.length === 0 && analysis.antiSynergies.length === 0 ? (
             <p className="text-sm text-gray-500">{t('No se detectaron sinergias de habilidad notables.')}</p>
           ) : (
@@ -639,7 +690,13 @@ export function TeamAnalysisView({ data }: Props) {
 
         {/* Amenazas del meta (#1) */}
         <div className="panel p-4 lg:col-span-2 animate-fade-in-up" style={{ animationDelay: '240ms' }}>
-          <h3 className="font-semibold mb-1">🎯 {t('Amenazas del meta')}</h3>
+          <h3 className="font-semibold mb-1 inline-flex items-center gap-1.5">🎯 {t('Amenazas del meta')}
+            <InfoTooltip label={t('Más información')}>
+              {lang === 'en'
+                ? 'Uncovered meta threats: the most-used Pokémon (from Smogon usage stats) that your team neither hits super-effectively nor walls (nobody resists all their STAB). They are the matchups you should plan an answer for.'
+                : 'Amenazas del meta no cubiertas: los Pokémon más usados (según las estadísticas de uso de Smogon) que tu equipo ni golpea supereficaz ni contiene (nadie resiste todos sus STAB). Son los emparejamientos para los que deberías preparar una respuesta.'}
+            </InfoTooltip>
+          </h3>
           <p className="text-xs text-gray-500 mb-3">
             {t('Pokémon muy usados que tu equipo ni resiste ni golpea supereficaz.')}
             {meta?.month && <span> · {meta.month}</span>}

@@ -3,6 +3,7 @@ import { useTeam } from '../store/teamStore';
 import { getSpecies, getLearnset, localizeName } from '../lib/championsData';
 import { Dropdown } from '../components/Dropdown';
 import { MoveSearch } from '../components/MoveSearch';
+import { InfoTooltip } from '../components/InfoTooltip';
 import { PokemonSprite, ItemSprite } from '../components/PokemonSprite';
 import { formatNatureLabel, clampInvestment, calcAllStats, getStatNatureClass } from '../lib/stats';
 import { loadMetaBuilds } from '../lib/metaBuilds';
@@ -128,7 +129,7 @@ function pctClass(pct: number): string {
 
 export function DamageCalcView({ data }: DamageCalcViewProps) {
   const { activeTeam } = useTeam();
-  const { t } = useLang();
+  const { t, lang } = useLang();
   // Estado persistido en localStorage: así al volver a la calculadora desde otra
   // página se conserva el rival y toda su configuración, campo, boosts, etc.
   const [attackerSlot, setAttackerSlot] = usePersistedState<number | null>('dmgcalc-attackerSlot', null);
@@ -202,13 +203,27 @@ export function DamageCalcView({ data }: DamageCalcViewProps) {
   return (
     <div className="page-enter">
       <div className="mb-4">
-        <h2 className="text-2xl font-bold">{t('Calculadora de Daño')}</h2>
+        <h2 className="text-2xl font-bold flex items-center gap-2">
+          {t('Calculadora de Daño')}
+          <InfoTooltip side="bottom" label={t('Más información')}>
+            {lang === 'en'
+              ? 'Estimate how much damage a move deals between two Pokémon. Pick an attacker from your team and set up the rival (species, spread, item, ability, boosts and status), then tune the field (weather, terrain, screens, allies fainted…) to see the damage range and KO chance for each move.'
+              : 'Estima cuánto daño hace un movimiento entre dos Pokémon. Elige un atacante de tu equipo y configura al rival (especie, reparto, objeto, habilidad, subidas y estado); luego ajusta el campo (clima, terreno, pantallas, aliados debilitados…) para ver el rango de daño y la probabilidad de KO de cada movimiento.'}
+          </InfoTooltip>
+        </h2>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px_minmax(0,1fr)] items-start">
         {/* Tu equipo */}
         <div className="panel p-4">
-          <h3 className="font-semibold mb-3 text-poke-pink">{t('Tu Pokémon')}</h3>
+          <h3 className="font-semibold mb-3 text-poke-pink flex items-center gap-1.5">
+            {t('Tu Pokémon')}
+            <InfoTooltip label={t('Más información')}>
+              {lang === 'en'
+                ? 'The attacker. Pick one of the Pokémon from your active team; its spread, item, ability, boosts and status are used to calculate the damage it deals.'
+                : 'El atacante. Elige uno de los Pokémon de tu equipo activo; su reparto, objeto, habilidad, subidas y estado se usan para calcular el daño que hace.'}
+            </InfoTooltip>
+          </h3>
           <div className="grid grid-cols-3 gap-2 mb-3">
             {(activeTeam?.pokemon ?? []).map((p, i) => (
               <button
@@ -250,7 +265,14 @@ export function DamageCalcView({ data }: DamageCalcViewProps) {
 
         {/* Rival */}
         <div className="panel p-4">
-          <h3 className="font-semibold mb-3 text-sky-400">{t('Pokémon Rival')}</h3>
+          <h3 className="font-semibold mb-3 text-sky-400 flex items-center gap-1.5">
+            {t('Pokémon Rival')}
+            <InfoTooltip label={t('Más información')}>
+              {lang === 'en'
+                ? 'The defender. Set up the opposing Pokémon by hand (species, spread, item, ability, boosts and status) or load a meta build to see how much your moves do to it.'
+                : 'El defensor. Configura a mano al Pokémon rival (especie, reparto, objeto, habilidad, subidas y estado) o carga un build del meta para ver cuánto le hacen tus movimientos.'}
+            </InfoTooltip>
+          </h3>
           <RivalEditor data={data} mon={rival} onChange={setRival} hasMeta={!!rivalBuild} onApplyMeta={applyMetaToRival} field={field} />
           {yourCalc && rival.speciesId && (
             <MoveResults results={rivalAttacks} moveNames={data.moveNames} empty={t('El rival no tiene movimientos.')} />
@@ -303,12 +325,26 @@ function FieldColumn({ field, setField, yourSide, setYourSide, rivalSide, setRiv
   yourFainted: number; setYourFainted: (n: number) => void;
   rivalFainted: number; setRivalFainted: (n: number) => void;
 }) {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   return (
     <div className="panel p-3 space-y-3 text-sm">
-      <h3 className="font-semibold text-center text-gray-300 text-sm">{t('Campo')}</h3>
+      <h3 className="font-semibold text-center text-gray-300 text-sm flex items-center justify-center gap-1.5">
+        {t('Campo')}
+        <InfoTooltip label={t('Más información')}>
+          {lang === 'en'
+            ? 'Battle conditions shared by both Pokémon: weather, terrain, screens, gravity, rooms, critical hit, spread target and fainted allies. They modify the final damage of every move.'
+            : 'Las condiciones de combate comunes a ambos Pokémon: clima, terreno, pantallas, gravedad, zonas, golpe crítico, tipo de objetivo y aliados debilitados. Modifican el daño final de cada movimiento.'}
+        </InfoTooltip>
+      </h3>
       <div>
-        <div className="text-xs text-gray-400 mb-1">{t('Clima')}</div>
+        <div className="text-xs text-gray-400 mb-1 flex items-center gap-1.5">
+          {t('Clima')}
+          <InfoTooltip label={t('Más información')}>
+            {lang === 'en'
+              ? 'Weather boosts or weakens some types (Sun ×1.5 Fire / ×0.5 Water, Rain the reverse) and powers abilities/moves. Sand and Snow also grant SpD (Rock) and Def (Ice) boosts.'
+              : 'El clima potencia o debilita algunos tipos (Sol ×1.5 Fuego / ×0.5 Agua, Lluvia al revés) y activa habilidades/movimientos. La Tormenta de arena y la Nieve suben además la Def. Esp. (Roca) y la Def. (Hielo).'}
+          </InfoTooltip>
+        </div>
         <Dropdown
           value={field.weather}
           options={WEATHERS}
@@ -319,7 +355,14 @@ function FieldColumn({ field, setField, yourSide, setYourSide, rivalSide, setRiv
         />
       </div>
       <div>
-        <div className="text-xs text-gray-400 mb-1">{t('Terreno')}</div>
+        <div className="text-xs text-gray-400 mb-1 flex items-center gap-1.5">
+          {t('Terreno')}
+          <InfoTooltip label={t('Más información')}>
+            {lang === 'en'
+              ? 'The terrain only affects Pokémon on the ground (not Flying/Levitate). It boosts its type ×1.3, and Psychic Terrain also blocks priority moves against grounded targets.'
+              : 'El terreno solo afecta a los Pokémon en tierra (no Voladores/Levitación). Potencia su tipo ×1.3, y el Campo Psíquico bloquea además los movimientos con prioridad contra objetivos en tierra.'}
+          </InfoTooltip>
+        </div>
         <Dropdown
           value={field.terrain}
           options={TERRAINS}
@@ -336,9 +379,19 @@ function FieldColumn({ field, setField, yourSide, setYourSide, rivalSide, setRiv
           <FieldButton label={t('Doble')} active={!field.singleTarget} onClick={() => setField({ ...field, singleTarget: false })} />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-x-3 gap-y-2 pt-1 border-t border-poke-accent/30">
-        <SideChips label={t('Tu lado')} side={yourSide} onChange={setYourSide} />
-        <SideChips label={t('Lado rival')} side={rivalSide} onChange={setRivalSide} fromRight />
+      <div className="pt-1 border-t border-poke-accent/30">
+        <div className="text-xs text-gray-400 mb-1 flex items-center gap-1.5">
+          {t('Pantallas')}
+          <InfoTooltip label={t('Más información')}>
+            {lang === 'en'
+              ? 'Screens halve the damage the affected side takes (Reflect physical, Light Screen special, Aurora Veil both). In doubles the reduction is ×0.667 instead of ×0.5. They protect the defender, so set them on the side that receives the hit.'
+              : 'Las pantallas reducen a la mitad el daño que recibe ese lado (Reflejo el físico, Pantalla Luz el especial, Velo Aurora ambos). En dobles la reducción es ×0,667 en vez de ×0,5. Protegen al defensor, así que actívalas en el lado que recibe el golpe.'}
+          </InfoTooltip>
+        </div>
+        <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+          <SideChips label={t('Tu lado')} side={yourSide} onChange={setYourSide} />
+          <SideChips label={t('Lado rival')} side={rivalSide} onChange={setRivalSide} fromRight />
+        </div>
       </div>
       <div className="grid grid-cols-2 gap-2 pt-2 border-t border-poke-accent/30 [&_button]:w-full">
         <div className="col-span-2">
@@ -351,7 +404,14 @@ function FieldColumn({ field, setField, yourSide, setYourSide, rivalSide, setRiv
         </div>
       </div>
       <div className="pt-2 border-t border-poke-accent/30">
-        <div className="text-xs text-gray-400 mb-1 uppercase">{t('Aliados KO')}</div>
+        <div className="text-xs text-gray-400 mb-1 uppercase flex items-center gap-1.5">
+          {t('Aliados KO')}
+          <InfoTooltip label={t('Más información')}>
+            {lang === 'en'
+              ? 'Number of fainted allies on each side (0–3 in doubles). It powers Supreme Overlord (+10% damage per fallen ally) and Last Respects (+50 base power per fallen ally).'
+              : 'Número de aliados debilitados en cada lado (0–3 en dobles). Escala General Supremo (+10 % de daño por aliado caído) y Última Baza (+50 de potencia por aliado caído).'}
+          </InfoTooltip>
+        </div>
         <div className="grid grid-cols-2 gap-3">
           <FaintedSelect label={t('Tu lado')} value={yourFainted} onChange={setYourFainted} />
           <FaintedSelect label={t('Lado rival')} value={rivalFainted} onChange={setRivalFainted} />

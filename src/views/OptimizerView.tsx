@@ -7,6 +7,7 @@ import { Dropdown } from '../components/Dropdown';
 import { MoveSearch } from '../components/MoveSearch';
 import { ItemSearch } from '../components/ItemSearch';
 import { SegmentedControl } from '../components/SegmentedControl';
+import { InfoTooltip } from '../components/InfoTooltip';
 import { calcMove, emptySide, type CalcMon, type FieldState } from '../lib/damageCalc';
 import { calcAllStats, getNatureMod } from '../lib/stats';
 import { loadMetaBuilds } from '../lib/metaBuilds';
@@ -194,7 +195,16 @@ export function OptimizerView({ data }: Props) {
   if (team.length === 0) {
     return (
       <div className="page-enter">
-        <div className="mb-4"><h2 className="text-2xl font-bold">{t('Optimizador de EVs')}</h2></div>
+        <div className="mb-4">
+          <h2 className="text-2xl font-bold flex items-center gap-2">
+            {t('Optimizador de EVs')}
+            <InfoTooltip label={t('Más información')} side="bottom">
+              {lang === 'en'
+                ? 'Calculates the minimum EV investment (in Champions Stat Points) your team’s Pokémon need to reach a specific goal: outspeed a target, survive a given attack, or OHKO/2HKO an opponent. Pick a Pokémon and a tab, set the scenario, and it finds the exact spread.'
+                : 'Calcula la inversión mínima de EVs (en Stat Points de Champions) que necesitan los Pokémon de tu equipo para lograr un objetivo concreto: superar en velocidad, sobrevivir un ataque o hacer OHKO/2HKO a un rival. Elige un Pokémon y una pestaña, define el escenario y te da el reparto exacto.'}
+            </InfoTooltip>
+          </h2>
+        </div>
         <div className="panel p-6 text-gray-400 text-center">{t('Añade Pokémon a tu equipo para optimizar sus EVs.')}</div>
       </div>
     );
@@ -203,12 +213,26 @@ export function OptimizerView({ data }: Props) {
   return (
     <div className="page-enter">
       <div className="mb-4">
-        <h2 className="text-2xl font-bold">{t('Optimizador de EVs')}</h2>
+        <h2 className="text-2xl font-bold flex items-center gap-2">
+          {t('Optimizador de EVs')}
+          <InfoTooltip label={t('Más información')} side="bottom">
+            {lang === 'en'
+              ? 'Calculates the minimum EV investment (in Champions Stat Points) your team’s Pokémon need to reach a specific goal: outspeed a target, survive a given attack, or OHKO/2HKO an opponent. Pick a Pokémon and a tab, set the scenario, and it finds the exact spread.'
+              : 'Calcula la inversión mínima de EVs (en Stat Points de Champions) que necesitan los Pokémon de tu equipo para lograr un objetivo concreto: superar en velocidad, sobrevivir un ataque o hacer OHKO/2HKO a un rival. Elige un Pokémon y una pestaña, define el escenario y te da el reparto exacto.'}
+          </InfoTooltip>
+        </h2>
       </div>
 
       {/* Elegir tu Pokémon */}
       <div className="panel p-4 mb-4">
-        <div className="text-xs text-gray-400 uppercase mb-2">{t('Tu Pokémon')}</div>
+        <div className="text-xs text-gray-400 uppercase mb-2 flex items-center gap-1.5">
+          {t('Tu Pokémon')}
+          <InfoTooltip label={t('Más información')} side="bottom">
+            {lang === 'en'
+              ? 'The Pokémon from your active team whose EVs you want to optimize. Every calculation below uses its species, item, ability and nature.'
+              : 'El Pokémon de tu equipo activo cuyos EVs quieres optimizar. Todos los cálculos de abajo usan su especie, objeto, habilidad y naturaleza.'}
+          </InfoTooltip>
+        </div>
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
           {team.map((p, i) => {
             const types = getSpecies(p.speciesId)?.types ?? [];
@@ -245,7 +269,7 @@ export function OptimizerView({ data }: Props) {
         ]}
       />
 
-      {tab === 'speed' && <SpeedTool data={data} mon={mon} t={t} />}
+      {tab === 'speed' && <SpeedTool data={data} mon={mon} t={t} lang={lang} />}
       {tab === 'defense' && <DefenseTool data={data} mon={mon} t={t} lang={lang} />}
       {tab === 'offense' && <OffenseTool data={data} mon={mon} t={t} lang={lang} />}
     </div>
@@ -253,7 +277,7 @@ export function OptimizerView({ data }: Props) {
 }
 
 // ── 🏃 Velocidad ──────────────────────────────────────────────────────────────
-function SpeedTool({ data, mon, t }: { data: ChampionsData; mon: TeamPokemon; t: (s: string) => string }) {
+function SpeedTool({ data, mon, t, lang }: { data: ChampionsData; mon: TeamPokemon; t: (s: string) => string; lang: 'es' | 'en' }) {
   const [targetId, setTargetId] = usePersistedState<string>('optimizer-speed-target', '');
   const target = targetId ? getSpecies(targetId) ?? null : null;
   const [preset, setPreset] = useState<'maxpos' | 'maxneu' | 'min' | 'meta'>('maxpos');
@@ -294,24 +318,52 @@ function SpeedTool({ data, mon, t }: { data: ChampionsData; mon: TeamPokemon; t:
   return (
     <div className="panel p-4 grid gap-4 sm:grid-cols-2 animate-fade-in-up">
       <div>
-        <div className="text-xs text-gray-400 uppercase mb-1">{t('Superar a')}</div>
+        <div className="text-xs text-gray-400 uppercase mb-1 flex items-center gap-1.5">
+          {t('Superar a')}
+          <InfoTooltip label={t('Más información')} side="bottom">
+            {lang === 'en'
+              ? 'Finds the minimum Speed Stat Points your Pokémon needs to outspeed this target by at least 1 point. The target’s speed uses the chosen preset (max/neutral/none, or its meta spread), plus any Tailwind, Choice Scarf or weather ability (Chlorophyll, Swift Swim…) you enable for either side.'
+              : 'Calcula los Stat Points mínimos de Velocidad que tu Pokémon necesita para superar a este objetivo por al menos 1 punto. La velocidad del objetivo usa el preset elegido (máx/neutra/sin invertir, o su spread del meta), más el Tailwind, Choice Scarf o habilidad de clima (Clorofila, Nado Rápido…) que actives en cada lado.'}
+          </InfoTooltip>
+        </div>
         <SpeciesSearch data={data} value={target?.name ?? ''} onPick={(sp) => setTargetId(sp.id)} placeholder={t('Buscar Pokémon objetivo…')} />
         <div className="mt-2">
           <Dropdown value={preset} options={['maxpos', 'maxneu', 'min', ...(hasMeta ? ['meta'] : [])]} render={(p) => p === 'meta' ? `${t('Spread del meta')} (${metaSpreadEvs(metaBuild)})` : t(p === 'maxpos' ? 'Máx velocidad (+nat)' : p === 'maxneu' ? 'Máx velocidad (neutra)' : 'Sin invertir (0)')} onChange={(p) => setPreset(p as typeof preset)} />
         </div>
-        <div className="text-xs text-gray-400 uppercase mb-1 mt-3">{t('Clima (ambos)')}</div>
+        <div className="text-xs text-gray-400 uppercase mb-1 mt-3 flex items-center gap-1.5">
+          {t('Clima (ambos)')}
+          <InfoTooltip label={t('Más información')} side="top">
+            {lang === 'en'
+              ? 'Weather applied to both Pokémon. It only matters here for speed-doubling abilities: Chlorophyll (sun), Swift Swim (rain), Sand Rush (sand) and Slush Rush (snow) double the holder’s Speed.'
+              : 'Clima aplicado a ambos Pokémon. Aquí solo importa para las habilidades que duplican Velocidad: Clorofila (sol), Nado Rápido (lluvia), Ímpetu Arena (arena) e Ímpetu Nieve (nieve) duplican la Velocidad de quien la tiene.'}
+          </InfoTooltip>
+        </div>
         <Dropdown value={weather} options={['', 'Sun', 'Rain', 'Sand', 'Snow']} render={(w) => t(w === '' ? 'Sin clima' : w === 'Sun' ? 'Sol' : w === 'Rain' ? 'Lluvia' : w === 'Sand' ? 'Arena' : 'Nieve')} onChange={setWeather} placeholder={t('Sin clima')} />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <div className="text-xs text-gray-400 uppercase mb-1">{t('Opciones de tu Pokémon')}</div>
+          <div className="text-xs text-gray-400 uppercase mb-1 flex items-center gap-1.5">
+            {t('Opciones de tu Pokémon')}
+            <InfoTooltip label={t('Más información')} side="top">
+              {lang === 'en'
+                ? 'Speed modifiers applied to YOUR Pokémon: Tailwind doubles Speed, Choice Scarf multiplies it ×1.5. Enable what will be active in the scenario you’re planning for.'
+                : 'Modificadores de Velocidad aplicados a TU Pokémon: Tailwind duplica la Velocidad, Choice Scarf la multiplica ×1,5. Activa lo que estará presente en el escenario que planeas.'}
+            </InfoTooltip>
+          </div>
           <div className="flex flex-col gap-2 [&_button]:w-full">
             <ToggleChip active={myTailwind} onClick={() => setMyTailwind((v) => !v)}>Tailwind</ToggleChip>
             <ToggleChip active={myScarf} onClick={() => setMyScarf((v) => !v)}>Choice Scarf</ToggleChip>
           </div>
         </div>
         <div>
-          <div className="text-xs text-gray-400 uppercase mb-1">{t('Opciones de tu rival')}</div>
+          <div className="text-xs text-gray-400 uppercase mb-1 flex items-center gap-1.5">
+            {t('Opciones de tu rival')}
+            <InfoTooltip label={t('Más información')} side="top">
+              {lang === 'en'
+                ? 'Same speed modifiers (Tailwind ×2, Choice Scarf ×1.5) applied to the target you want to outspeed, so the result accounts for their setup too.'
+                : 'Los mismos modificadores de Velocidad (Tailwind ×2, Choice Scarf ×1,5) aplicados al objetivo que quieres superar, para que el resultado tenga en cuenta también su configuración.'}
+            </InfoTooltip>
+          </div>
           <div className="flex flex-col gap-2 [&_button]:w-full">
             <ToggleChip active={tgtTailwind} onClick={() => setTgtTailwind((v) => !v)}>Tailwind</ToggleChip>
             <ToggleChip active={tgtScarf} onClick={() => setTgtScarf((v) => !v)}>Choice Scarf</ToggleChip>
@@ -405,9 +457,23 @@ function DefenseTool({ data, mon, t, lang }: { data: ChampionsData; mon: TeamPok
   return (
     <div className="panel p-4 grid gap-4 sm:grid-cols-2 animate-fade-in-up">
       <div>
-        <div className="text-xs text-gray-400 uppercase mb-1">{t('Atacante')}</div>
+        <div className="text-xs text-gray-400 uppercase mb-1 flex items-center gap-1.5">
+          {t('Atacante')}
+          <InfoTooltip label={t('Más información')} side="bottom">
+            {lang === 'en'
+              ? 'The rival Pokémon whose attack you want to survive. Its base stats and chosen ability/item/investment set the incoming damage.'
+              : 'El Pokémon rival cuyo ataque quieres sobrevivir. Sus estadísticas base y la habilidad/objeto/inversión elegidos definen el daño que recibes.'}
+          </InfoTooltip>
+        </div>
         <SpeciesSearch data={data} value={atk?.name ?? ''} onPick={(sp) => { setAtkId(sp.id); setMoveId(''); }} placeholder={t('Buscar atacante…')} />
-        <div className="text-xs text-gray-400 uppercase mb-1 mt-2">{t('Movimiento')}</div>
+        <div className="text-xs text-gray-400 uppercase mb-1 mt-2 flex items-center gap-1.5">
+          {t('Movimiento')}
+          <InfoTooltip label={t('Más información')} side="top">
+            {lang === 'en'
+              ? 'The attack to survive. Its category decides which defense is invested — physical → Def, special → SpD. Use the Single/Area toggle for whether it hits one target or spreads (spread moves deal ×0.75).'
+              : 'El ataque a sobrevivir. Su categoría decide qué defensa se invierte: físico → Def, especial → SpD. Usa el interruptor Único/Área según golpee a un objetivo o a varios (los de área hacen ×0,75).'}
+          </InfoTooltip>
+        </div>
         <div className="flex items-center gap-2">
           <div className="flex-1 min-w-0">
             <MoveSearch moves={learn} value={moveId} names={data.moveNames ?? {}} onPick={setMoveId} placeholder={t('Buscar movimiento…')} lang={lang} />
@@ -416,19 +482,47 @@ function DefenseTool({ data, mon, t, lang }: { data: ChampionsData; mon: TeamPok
             {singleTarget ? t('Único') : t('Área')}
           </ToggleChip>
         </div>
-        <div className="text-xs text-gray-400 uppercase mb-1 mt-2">{t('Objeto del atacante')}</div>
+        <div className="text-xs text-gray-400 uppercase mb-1 mt-2 flex items-center gap-1.5">
+          {t('Objeto del atacante')}
+          <InfoTooltip label={t('Más información')} side="top">
+            {lang === 'en'
+              ? 'A damage-boosting item on the attacker (Life Orb, Choice Band/Specs, type gems…). Pick the worst case you want to hold up against. Locked to the meta set’s item when you choose that investment.'
+              : 'Un objeto que sube el daño del atacante (Life Orb, Choice Band/Specs, gemas de tipo…). Elige el peor caso que quieras aguantar. Se fija al objeto del set del meta cuando eliges esa inversión.'}
+          </InfoTooltip>
+        </div>
         <ItemSearch items={OFFENSIVE_ITEMS.filter((i) => data.items.includes(i))} value={atkItemEff} onPick={setAtkItem} placeholder={t('Sin objeto')} lang={lang} disabled={atkInvest === 'meta'} clearable />
         {atk && (
           <>
-            <div className="text-xs text-gray-400 uppercase mb-1 mt-2">{t('Habilidad del rival')}</div>
+            <div className="text-xs text-gray-400 uppercase mb-1 mt-2 flex items-center gap-1.5">
+              {t('Habilidad del rival')}
+              <InfoTooltip label={t('Más información')} side="top">
+                {lang === 'en'
+                  ? 'The attacker’s ability, which can change the damage (boosts like Adaptability/Sheer Force, weather or type-boosting abilities). Set it to the one you expect the rival to run.'
+                  : 'La habilidad del atacante, que puede cambiar el daño (potenciadores como Adaptable/Potencia Bruta, habilidades de clima o que suben un tipo). Ponla en la que esperas que lleve el rival.'}
+              </InfoTooltip>
+            </div>
             <Dropdown value={atkAbilityEff} options={atk.abilities} render={(a) => localizeName('abilities', a, lang)} onChange={setAtkAbility} />
           </>
         )}
       </div>
       <div>
-        <div className="text-xs text-gray-400 uppercase mb-1">{t('Aguantar')}</div>
+        <div className="text-xs text-gray-400 uppercase mb-1 flex items-center gap-1.5">
+          {t('Aguantar')}
+          <InfoTooltip label={t('Más información')} side="bottom">
+            {lang === 'en'
+              ? 'Finds the minimum HP + defense investment your Pokémon needs to survive 1 (or 2) worst-case hits. The rival’s ability affects the damage (e.g. an ability that boosts the move’s power or type), so pick the attacker’s real ability. The single/area toggle matters too: a spread move that hits several targets deals ×0.75 damage, so it’s easier to survive than a single-target hit.'
+              : 'Calcula la inversión mínima de HP + defensa que tu Pokémon necesita para sobrevivir 1 (o 2) golpes en el peor caso. La habilidad del rival afecta al daño (p. ej. una que sube la potencia o el tipo del ataque), así que elige la habilidad real del atacante. El interruptor único/área también cuenta: un movimiento de área que golpea a varios objetivos hace ×0,75 de daño, por lo que se sobrevive más fácil que un golpe a un solo objetivo.'}
+          </InfoTooltip>
+        </div>
         <Dropdown value={String(hits)} options={['1', '2']} render={(h) => (h === '1' ? t('1 golpe') : t('2 golpes'))} onChange={(h) => setHits(Number(h) as 1 | 2)} />
-        <div className="text-xs text-gray-400 uppercase mb-1 mt-3">{t('Ataque del rival')}</div>
+        <div className="text-xs text-gray-400 uppercase mb-1 mt-3 flex items-center gap-1.5">
+          {t('Ataque del rival')}
+          <InfoTooltip label={t('Más información')} side="top">
+            {lang === 'en'
+              ? 'How much the attacker invests in its offensive stat: Max investment (32 SP), None, or its meta spread. “Favorable nature” adds a +Atk/+SpA boosting nature. Pick the worst case you want to survive.'
+              : 'Cuánto invierte el atacante en su estadística ofensiva: Máx inversión (32 SP), Sin invertir, o su spread del meta. «Nat. favorable» añade una naturaleza que sube +Atk/+SpA. Elige el peor caso que quieras sobrevivir.'}
+          </InfoTooltip>
+        </div>
         <div className="flex items-center gap-2">
           <Dropdown
             className="flex-1 min-w-0"
@@ -439,7 +533,14 @@ function DefenseTool({ data, mon, t, lang }: { data: ChampionsData; mon: TeamPok
           />
           <ToggleChip active={atkNatureFav && atkInvest !== 'meta'} disabled={atkInvest === 'meta'} onClick={() => setAtkNatureFav((v) => !v)}>{t('Nat. favorable')}</ToggleChip>
         </div>
-        <div className="text-xs text-gray-400 uppercase mb-1 mt-3">{t('Mínimos')}</div>
+        <div className="text-xs text-gray-400 uppercase mb-1 mt-3 flex items-center gap-1.5">
+          {t('Mínimos')}
+          <InfoTooltip label={t('Más información')} side="top">
+            {lang === 'en'
+              ? 'Optional floors (in Stat Points) for HP/Def/SpD you’ve already committed elsewhere. The optimizer keeps at least these values and minimizes the rest of the HP + defense budget on top of them.'
+              : 'Suelos opcionales (en Stat Points) de HP/Def/SpD que ya has fijado por otro motivo. El optimizador mantiene al menos estos valores y minimiza el resto del presupuesto de HP + defensa por encima de ellos.'}
+          </InfoTooltip>
+        </div>
         <div className="grid grid-cols-3 gap-2">
           <label className="text-[11px] text-gray-400 text-center">HP<NumStepper value={hpMin} onChange={setHpMin} /></label>
           <label className="text-[11px] text-gray-400 text-center">Def<NumStepper value={defMin} onChange={setDefMin} /></label>
@@ -512,13 +613,34 @@ function OffenseTool({ data, mon, t, lang }: { data: ChampionsData; mon: TeamPok
   return (
     <div className="panel p-4 grid gap-4 sm:grid-cols-2 animate-fade-in-up">
       <div>
-        <div className="text-xs text-gray-400 uppercase mb-1">{t('Tu movimiento')}</div>
+        <div className="text-xs text-gray-400 uppercase mb-1 flex items-center gap-1.5">
+          {t('Tu movimiento')}
+          <InfoTooltip label={t('Más información')} side="bottom">
+            {lang === 'en'
+              ? 'The attacking move used to KO the target. Only the damaging moves already on your Pokémon are listed; its category (physical/special) decides which offensive stat gets invested.'
+              : 'El movimiento de ataque con el que quieres debilitar al objetivo. Solo aparecen los movimientos de daño que ya lleva tu Pokémon; su categoría (físico/especial) decide qué estadística ofensiva se invierte.'}
+          </InfoTooltip>
+        </div>
         <Dropdown value={moveId} options={['', ...myMoves]} onChange={setMoveId} render={(id) => (id ? localizeName('moves', data.moveNames?.[id] ?? id, lang) : t('— Movimiento —'))} placeholder={t('— Movimiento —')} />
-        <div className="text-xs text-gray-400 uppercase mb-1 mt-2">{t('Objetivo')}</div>
+        <div className="text-xs text-gray-400 uppercase mb-1 mt-2 flex items-center gap-1.5">
+          {t('Objetivo')}
+          <InfoTooltip label={t('Más información')} side="top">
+            {lang === 'en'
+              ? 'The Pokémon you want to knock out. Its base stats plus the bulk, nature and item you set below determine how much damage is needed.'
+              : 'El Pokémon al que quieres debilitar. Sus estadísticas base más la defensa, naturaleza y objeto que elijas abajo determinan cuánto daño hace falta.'}
+          </InfoTooltip>
+        </div>
         <SpeciesSearch data={data} value={target?.name ?? ''} onPick={(sp) => setTargetId(sp.id)} placeholder={t('Buscar objetivo…')} />
       </div>
       <div>
-        <div className="text-xs text-gray-400 uppercase mb-1">{t('Defensa del objetivo')}</div>
+        <div className="text-xs text-gray-400 uppercase mb-1 flex items-center gap-1.5">
+          {t('Defensa del objetivo')}
+          <InfoTooltip label={t('Más información')} side="bottom">
+            {lang === 'en'
+              ? 'How bulky you assume the target is: no investment, max HP/Def/SpD (or combos), or its meta spread. “Favorable nature” adds a defense-boosting nature (+Def or +SpD). Assume the bulkiest realistic case to be safe.'
+              : 'Lo defensivo que supones que es el objetivo: sin invertir, máx HP/Def/SpD (o combinaciones), o su spread del meta. «Nat. favorable» añade una naturaleza que sube la defensa (+Def o +SpD). Supón el caso más defensivo realista para ir sobre seguro.'}
+          </InfoTooltip>
+        </div>
         <div className="flex items-center gap-2">
           <Dropdown
             className="flex-1 min-w-0"
@@ -535,9 +657,23 @@ function OffenseTool({ data, mon, t, lang }: { data: ChampionsData; mon: TeamPok
             {t('Nat. favorable')}
           </ToggleChip>
         </div>
-        <div className="text-xs text-gray-400 uppercase mb-1 mt-2">{t('Objeto del objetivo')}</div>
+        <div className="text-xs text-gray-400 uppercase mb-1 mt-2 flex items-center gap-1.5">
+          {t('Objeto del objetivo')}
+          <InfoTooltip label={t('Más información')} side="top">
+            {lang === 'en'
+              ? 'A damage-reducing item on the target (Assault Vest, Eviolite, resist berries…) that makes the KO harder. Locked to the meta set’s item when you pick that spread.'
+              : 'Un objeto que reduce el daño en el objetivo (Assault Vest, Eviolita, bayas de resistencia…) y que dificulta el KO. Se fija al objeto del set del meta cuando eliges ese spread.'}
+          </InfoTooltip>
+        </div>
         <ItemSearch items={DEFENSIVE_ITEMS.filter((i) => data.items.includes(i))} value={offItem} onPick={setDefItem} placeholder={t('Sin objeto')} lang={lang} disabled={bulk === 'meta'} clearable />
-        <div className="text-xs text-gray-400 uppercase mb-1 mt-2">{t('Meta')}</div>
+        <div className="text-xs text-gray-400 uppercase mb-1 mt-2 flex items-center gap-1.5">
+          {t('Meta')}
+          <InfoTooltip label={t('Más información')} side="top">
+            {lang === 'en'
+              ? 'OHKO = knock out in one hit; 2HKO = in two hits. It finds the minimum attacking Stat Points so the KO is guaranteed (using the low damage roll), against the target’s chosen bulk, nature and item.'
+              : 'OHKO = debilitar de un golpe; 2HKO = en dos golpes. Busca los Stat Points de ataque mínimos para que el KO esté garantizado (usando la tirada de daño mínima), contra la defensa, naturaleza y objeto elegidos para el objetivo.'}
+          </InfoTooltip>
+        </div>
         <Dropdown value={goal} options={['ohko', '2hko']} render={(g) => (g === 'ohko' ? 'OHKO' : '2HKO')} onChange={(g) => setGoal(g as typeof goal)} />
       </div>
       {calc && (

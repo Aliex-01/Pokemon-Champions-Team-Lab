@@ -4,6 +4,7 @@ import { calcAllStats } from '../lib/stats';
 import { getSpecies, localizeName } from '../lib/championsData';
 import { loadMetaBuilds } from '../lib/metaBuilds';
 import { PokemonSprite } from '../components/PokemonSprite';
+import { InfoTooltip } from '../components/InfoTooltip';
 import { useFlip } from '../lib/useFlip';
 import { useLang } from '../lib/i18n';
 import type { ChampionsData, EvSpread, SpeciesData, MetaBuildsData } from '../types/pokemon';
@@ -479,19 +480,61 @@ export function SpeedTierView({ data }: SpeedTierProps) {
   return (
     <div className="page-enter">
       <div className="mb-4">
-        <h2 className="text-2xl font-bold">Speed Tier</h2>
+        <h2 className="text-2xl font-bold flex items-center gap-2">
+          Speed Tier
+          <InfoTooltip side="bottom" label={t('Más información')}>
+            {lang === 'en'
+              ? 'Speed ranking of the whole format with your team highlighted, so you can see who outspeeds whom. Use the toggles to apply Tailwind, weather, Trick Room, Unburden or Choice Scarf.'
+              : 'Ranking de Velocidad de todo el formato con tu equipo resaltado, para ver quién supera a quién. Usa los toggles para aplicar Viento Afín, clima, Espacio Raro, Liviano o Pañuelo Elección.'}
+          </InfoTooltip>
+        </h2>
       </div>
 
       <div className="flex flex-wrap gap-2 mb-4">
-        <ToggleChip label="≋ Tailwind" active={tailwind} onClick={() => setTailwind((v) => !v)} />
+        <span className="inline-flex items-center gap-1">
+          <ToggleChip label="≋ Tailwind" active={tailwind} onClick={() => setTailwind((v) => !v)} />
+          <InfoTooltip label={t('Más información')}>
+            {lang === 'en'
+              ? 'Tailwind doubles the Speed of your team for the rows shown here.'
+              : 'Viento Afín duplica la Velocidad de tu equipo en las filas mostradas aquí.'}
+          </InfoTooltip>
+        </span>
         <ToggleChip label={t(WEATHER_LABEL.sun)} active={weather === 'sun'} onClick={() => toggleWeather('sun')} />
         <ToggleChip label={t(WEATHER_LABEL.rain)} active={weather === 'rain'} onClick={() => toggleWeather('rain')} />
         <ToggleChip label={t(WEATHER_LABEL.snow)} active={weather === 'snow'} onClick={() => toggleWeather('snow')} />
-        <ToggleChip label={t(WEATHER_LABEL.sand)} active={weather === 'sand'} onClick={() => toggleWeather('sand')} />
-        <ToggleChip label={`⧗ ${t('Trick Room')}`} active={trickRoom} onClick={() => setTrickRoom((v) => !v)} />
-        <ToggleChip label={`❧ ${localizeName('abilities', 'Unburden', lang)}`} active={unburden} onClick={() => setUnburden((v) => !v)} />
+        <span className="inline-flex items-center gap-1">
+          <ToggleChip label={t(WEATHER_LABEL.sand)} active={weather === 'sand'} onClick={() => toggleWeather('sand')} />
+          <InfoTooltip label={t('Más información')}>
+            {lang === 'en'
+              ? 'Weather adds benchmark rows for abilities that double Speed under it (Chlorophyll in sun, Swift Swim in rain, Slush Rush in snow, Sand Rush in sandstorm).'
+              : 'El clima añade filas de referencia para habilidades que duplican la Velocidad bajo él (Clorofila con sol, Nado Rápido con lluvia, Quitanieve con nieve, Ímpetu Arena con tormenta de arena).'}
+          </InfoTooltip>
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <ToggleChip label={`⧗ ${t('Trick Room')}`} active={trickRoom} onClick={() => setTrickRoom((v) => !v)} />
+          <InfoTooltip label={t('Más información')}>
+            {lang === 'en'
+              ? 'Trick Room reverses turn order for five turns: the slowest Pokémon moves first, so the tier list is inverted.'
+              : 'Espacio Raro invierte el orden de turno durante cinco turnos: el Pokémon más lento actúa primero, así que la tabla se invierte.'}
+          </InfoTooltip>
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <ToggleChip label={`❧ ${localizeName('abilities', 'Unburden', lang)}`} active={unburden} onClick={() => setUnburden((v) => !v)} />
+          <InfoTooltip label={t('Más información')}>
+            {lang === 'en'
+              ? 'Unburden doubles the holder’s Speed once it uses or loses its held item.'
+              : 'Liviano duplica la Velocidad del portador una vez que usa o pierde su objeto.'}
+          </InfoTooltip>
+        </span>
         <ToggleChip className="ml-auto" label={t('Habilidades')} active={showAbilities} onClick={() => setShowAbilities((v) => !v)} />
-        <ToggleChip label="Choice Scarf" active={showScarf} onClick={() => setShowScarf((v) => !v)} />
+        <span className="inline-flex items-center gap-1">
+          <ToggleChip label="Choice Scarf" active={showScarf} onClick={() => setShowScarf((v) => !v)} />
+          <InfoTooltip label={t('Más información')}>
+            {lang === 'en'
+              ? 'Choice Scarf multiplies Speed by 1.5. Shown as extra benchmark rows for common users based on Smogon usage.'
+              : 'Pañuelo Elección multiplica la Velocidad por 1,5. Se muestra como filas de referencia extra para portadores comunes según el uso de Smogon.'}
+          </InfoTooltip>
+        </span>
         <ToggleChip label={t('Spreads Neutros')} active={showNeutral} onClick={() => setShowNeutral((v) => !v)} />
       </div>
 

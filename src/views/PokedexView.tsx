@@ -6,6 +6,7 @@ import { Combobox } from '../components/Combobox';
 import { Dropdown } from '../components/Dropdown';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { Modal } from '../components/Modal';
+import { InfoTooltip } from '../components/InfoTooltip';
 import { useFlip } from '../lib/useFlip';
 import { useLang } from '../lib/i18n';
 import { TYPE_NAMES } from '../lib/typeChart';
@@ -246,20 +247,39 @@ export function PokedexView({ data }: PokedexViewProps) {
   return (
     <div className="page-enter">
       <div className="mb-5">
-        <h1 className="text-2xl font-bold text-white">{t('Pokédex del formato')}</h1>
+        <h1 className="flex items-center gap-1.5 text-2xl font-bold text-white">
+          {t('Pokédex del formato')}
+          <InfoTooltip side="bottom" label={t('Más información')}>
+            {lang === 'en'
+              ? 'Browse every Pokémon legal in the format. Filter by name, type, ability, moves and minimum base stats, then click a card to see its full details (stats, abilities and mega evolutions).'
+              : 'Explora todos los Pokémon legales del formato. Filtra por nombre, tipo, habilidad, movimientos y estadísticas base mínimas, y haz clic en una card para ver su detalle completo (stats, habilidades y megaevoluciones).'}
+          </InfoTooltip>
+        </h1>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[320px_1fr] items-start">
         {/* Panel de filtros */}
         <div className="panel p-4 flex flex-col gap-4 lg:sticky lg:top-20">
           <div>
-            <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">{t('Nombre')}</label>
+            <label className="flex items-center gap-1 text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">
+              {t('Nombre')}
+              <InfoTooltip label={t('Más información')}>
+                {lang === 'en'
+                  ? 'Search by name (English or Spanish). Matches any part of the name, so partial text works too.'
+                  : 'Busca por nombre (en inglés o español). Coincide con cualquier parte del nombre, así que también vale texto parcial.'}
+              </InfoTooltip>
+            </label>
             <input className="input-field" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('Buscar Pokémon...')} />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">
+            <label className="flex items-center gap-1 text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">
               {t('Movimientos que aprende')}
+              <InfoTooltip label={t('Más información')}>
+                {lang === 'en'
+                  ? 'Show only Pokémon that can learn all the selected moves. Add several to narrow the roster to those that learn every one.'
+                  : 'Muestra solo los Pokémon que pueden aprender todos los movimientos seleccionados. Añade varios para acotar el roster a los que los aprenden todos.'}
+              </InfoTooltip>
             </label>
             <MoveSearch
               moves={data.moves}
@@ -286,7 +306,14 @@ export function PokedexView({ data }: PokedexViewProps) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">{t('Tipos')}</label>
+            <label className="flex items-center gap-1 text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">
+              {t('Tipos')}
+              <InfoTooltip label={t('Más información')}>
+                {lang === 'en'
+                  ? 'Filter by type. Select one or more; a Pokémon matches if it has any of the selected types.'
+                  : 'Filtra por tipo. Selecciona uno o varios; un Pokémon coincide si tiene alguno de los tipos seleccionados.'}
+              </InfoTooltip>
+            </label>
             <div className="flex flex-wrap gap-1">
               {TYPE_NAMES.map((tp) => {
                 const on = selTypes.includes(tp);
@@ -305,7 +332,14 @@ export function PokedexView({ data }: PokedexViewProps) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">{t('Habilidad')}</label>
+            <label className="flex items-center gap-1 text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">
+              {t('Habilidad')}
+              <InfoTooltip label={t('Más información')}>
+                {lang === 'en'
+                  ? 'Show only Pokémon that can have the chosen ability (including hidden abilities).'
+                  : 'Muestra solo los Pokémon que pueden tener la habilidad elegida (incluidas las habilidades ocultas).'}
+              </InfoTooltip>
+            </label>
             <Combobox
               items={data.abilities}
               value={ability}
@@ -317,7 +351,14 @@ export function PokedexView({ data }: PokedexViewProps) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">{t('Megaevolución')}</label>
+            <label className="flex items-center gap-1 text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">
+              {t('Megaevolución')}
+              <InfoTooltip label={t('Más información')}>
+                {lang === 'en'
+                  ? 'Filter by mega evolution: only Pokémon that have a mega in the format, only those without one, or any.'
+                  : 'Filtra por megaevolución: solo Pokémon que tienen mega en el formato, solo los que no la tienen, o cualquiera.'}
+              </InfoTooltip>
+            </label>
             <SegmentedControl
               fluid
               value={megaFilter}
@@ -331,7 +372,14 @@ export function PokedexView({ data }: PokedexViewProps) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">{t('Estadística mínima')}</label>
+            <label className="flex items-center gap-1 text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">
+              {t('Estadística mínima')}
+              <InfoTooltip label={t('Más información')}>
+                {lang === 'en'
+                  ? 'Filters the roster by base stat: only Pokémon whose base value for each stat is at least the set minimum are shown (BST is the sum of all base stats).'
+                  : 'Filtra el roster por estadística base: solo se muestran los Pokémon cuyo valor base de cada estadística alcanza el mínimo indicado (BST es la suma de todas las estadísticas base).'}
+              </InfoTooltip>
+            </label>
             <div className="flex flex-col gap-1.5">
               {STAT_FILTER_KEYS.map((k) => {
                 const max = k === 'bst' ? 720 : STAT_MAX;

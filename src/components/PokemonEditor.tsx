@@ -14,6 +14,7 @@ import {
 } from '../lib/stats';
 import { PokemonSprite, ItemSprite } from './PokemonSprite';
 import { Dropdown } from './Dropdown';
+import { InfoTooltip } from './InfoTooltip';
 import { useLang } from '../lib/i18n';
 import { TYPE_NAMES } from '../lib/typeChart';
 
@@ -183,7 +184,16 @@ export function PokemonEditor({ data, pokemon, onUpdate, isActive, isSelected, o
                   />
                 )}
               </Field>
-              <Field label={t('Naturaleza')}>
+              <Field
+                label={t('Naturaleza')}
+                hint={
+                  <InfoTooltip label={t('Más información')}>
+                    {lang === 'en'
+                      ? 'A Nature raises one stat by 10% and lowers another by 10% (shown in green/red on the stats). Neutral Natures change nothing.'
+                      : 'La naturaleza sube una estadística un 10% y baja otra un 10% (marcadas en verde/rojo en las stats). Las naturalezas neutras no cambian nada.'}
+                  </InfoTooltip>
+                }
+              >
                 <Dropdown
                   value={pokemon.nature}
                   options={data.natures}
@@ -196,8 +206,13 @@ export function PokemonEditor({ data, pokemon, onUpdate, isActive, isSelected, o
 
           <div>
             <div className="flex flex-wrap justify-between items-center gap-2 mb-2">
-              <h3 className="font-semibold">
+              <h3 className="font-semibold flex items-center gap-1.5">
                 {t(investmentLabel)} ({invested}/{maxTotal})
+                <InfoTooltip label={t('Más información')}>
+                  {lang === 'en'
+                    ? 'Champions uses Stat Points (0–32 per stat). “Classic EVs” shows them on the Showdown scale (0–252). Switching modes only changes how they are displayed: the spread is converted automatically.'
+                    : 'Champions usa Stat Points (0–32 por estadística). «EVs clásicos» los muestra en la escala de Showdown (0–252). Cambiar de modo solo cambia cómo se muestran: el reparto se convierte automáticamente.'}
+                </InfoTooltip>
               </h3>
               <div className="flex gap-2 items-center">
                 <div className="flex rounded-lg overflow-hidden border border-poke-accent text-xs">
@@ -708,10 +723,13 @@ function ItemSearch({
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="text-xs text-gray-400 uppercase">{label}</span>
+      <span className="text-xs text-gray-400 uppercase inline-flex items-center gap-1">
+        {label}
+        {hint}
+      </span>
       <div className="mt-0.5">{children}</div>
     </label>
   );

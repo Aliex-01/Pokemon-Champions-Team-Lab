@@ -6,6 +6,7 @@ import { parseShowdownTeam } from '../lib/showdownImport';
 import { PokemonSprite } from '../components/PokemonSprite';
 import { Dropdown } from '../components/Dropdown';
 import { Modal } from '../components/Modal';
+import { InfoTooltip } from '../components/InfoTooltip';
 import { useFlip } from '../lib/useFlip';
 import type { ChampionsData, TeamPokemon } from '../types/pokemon';
 
@@ -142,7 +143,14 @@ export function TournamentTeamsView({ data }: Props) {
   return (
     <div className="page-enter">
       <div className="mb-4">
-        <h2 className="text-2xl font-bold">{t('Equipos de torneo')}</h2>
+        <h2 className="flex items-center gap-1.5 text-2xl font-bold">
+          {t('Equipos de torneo')}
+          <InfoTooltip side="bottom" label={t('Más información')}>
+            {lang === 'en'
+              ? 'Real teams used by players in official VGC tournaments (data from VGCPastes). Filter by player, event, Pokémon or regulation, and open a team to see its moves, EVs, rental code and source — or import it into your active team.'
+              : 'Equipos reales usados por jugadores en torneos oficiales de VGC (datos de VGCPastes). Filtra por jugador, evento, Pokémon o regulación, y abre un equipo para ver sus movimientos, EVs, código de alquiler y fuente — o impórtalo a tu equipo activo.'}
+          </InfoTooltip>
+        </h2>
       </div>
 
       {/* Filtros */}
@@ -288,7 +296,16 @@ export function TournamentTeamsView({ data }: Props) {
             )}
 
             <div className="flex flex-wrap items-center gap-2 pt-1">
-              {selected.code && <CodeButton code={selected.code} t={t} />}
+              {selected.code && (
+                <span className="inline-flex items-center gap-1">
+                  <CodeButton code={selected.code} t={t} />
+                  <InfoTooltip label={t('Más información')}>
+                    {lang === 'en'
+                      ? 'Rental code: enter it in the game to instantly download this exact team for casual battles. Click to copy it to the clipboard.'
+                      : 'Código de alquiler: introdúcelo en el juego para descargar al instante este equipo exacto en combates amistosos. Haz clic para copiarlo al portapapeles.'}
+                  </InfoTooltip>
+                </span>
+              )}
               <a href={`https://pokepast.es/${selected.paste}`} target="_blank" rel="noopener noreferrer" className="btn-secondary text-sm py-1.5 px-3">Poképaste</a>
               {selected.source && selected.source !== '-' && (
                 <a href={selected.source} target="_blank" rel="noopener noreferrer" className="btn-secondary text-sm py-1.5 px-3">{t('Fuente')}</a>

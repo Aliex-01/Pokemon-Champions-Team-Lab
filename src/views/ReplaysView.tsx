@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react';
+import { useEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import { useTeam } from '../store/teamStore';
 import { useLang } from '../lib/i18n';
 import { getSpecies, localizeName } from '../lib/championsData';
 import { PokemonSprite } from '../components/PokemonSprite';
 import { Logo } from '../components/Logo';
+import { InfoTooltip } from '../components/InfoTooltip';
 import { parseReplayId, fetchReplay, parseReplay, userInReplay, searchUserReplays, type MatchRecord } from '../lib/replay';
 import {
   computeStats, matchSavedTeam, computeUsage, computeMatchups, computeMoveUsageByMon, computeLeads, groupSets,
@@ -192,7 +193,14 @@ export function ReplaysView(_props: Props) {
   return (
     <div className="page-enter">
       <div className="mb-4">
-        <h2 className="text-2xl font-bold">{t('Repeticiones')}</h2>
+        <h2 className="text-2xl font-bold flex items-center gap-2">
+          {t('Repeticiones')}
+          <InfoTooltip label={t('Más información')} side="bottom" className="h-5 w-5 text-xs">
+            {lang === 'en'
+              ? 'Import your Pokémon Showdown Champions replays (by URL or automatically from your username) and this page analyses them: win rate, most-used leads, matchups against each opponent, and Pokémon and move usage. Everything is computed locally from your saved replays.'
+              : 'Importa tus repeticiones de Champions de Pokémon Showdown (por URL o automáticamente desde tu usuario) y esta página las analiza: win rate, leads más usados, matchups contra cada rival, y uso de Pokémon y movimientos. Todo se calcula en local a partir de tus repeticiones guardadas.'}
+          </InfoTooltip>
+        </h2>
       </div>
 
       <div className="panel p-4 mb-4 border-poke-pink/20">
@@ -211,7 +219,14 @@ export function ReplaysView(_props: Props) {
           <button type="button" onClick={autoImport} disabled={busy} className="btn-secondary text-sm py-2 px-4 disabled:opacity-50">
             {syncing ? `${t('Importando…')} ${syncing.done}/${syncing.total}` : `↻ ${t('Importar mis últimas partidas')}`}
           </button>
-          <span className="text-xs text-gray-500">{t('Trae automáticamente tus repeticiones públicas de Champions en Showdown.')}</span>
+          <span className="text-xs text-gray-500 inline-flex items-center gap-1.5">
+            {t('Trae automáticamente tus repeticiones públicas de Champions en Showdown.')}
+            <InfoTooltip label={t('Más información')} side="bottom">
+              {lang === 'en'
+                ? 'Two ways to add games: paste a single replay URL/ID in the field above, or click here to auto-fetch your latest public Champions replays for the Showdown username entered. Only public replays are found automatically — save the replay on Showdown to make it public.'
+                : 'Dos formas de añadir partidas: pega la URL/ID de una repetición en el campo de arriba, o pulsa aquí para traer automáticamente tus últimas repeticiones públicas de Champions del usuario de Showdown indicado. Solo se encuentran las repeticiones públicas: guarda la repetición en Showdown para hacerla pública.'}
+            </InfoTooltip>
+          </span>
         </div>
         {error && <p className="text-sm text-red-400 mt-2">⚠ {error}</p>}
       </div>
@@ -260,11 +275,11 @@ export function ReplaysView(_props: Props) {
             </div>
           ) : (
             <div key={tab} className="page-enter">
-              {tab === 'overview' && <Overview matches={filtered} t={t} />}
+              {tab === 'overview' && <Overview matches={filtered} lang={lang} t={t} />}
               {tab === 'games' && <GameByGame matches={filtered} onDelete={removeMatch} lang={lang} t={t} />}
-              {tab === 'sets' && <MatchByMatch sets={groupSets(filtered)} t={t} />}
-              {tab === 'usage' && <UsageStats rows={computeUsage(filtered)} leads={computeLeads(filtered)} total={filtered.length} t={t} />}
-              {tab === 'matchup' && <MatchupStats rows={computeMatchups(filtered)} t={t} />}
+              {tab === 'sets' && <MatchByMatch sets={groupSets(filtered)} lang={lang} t={t} />}
+              {tab === 'usage' && <UsageStats rows={computeUsage(filtered)} leads={computeLeads(filtered)} total={filtered.length} lang={lang} t={t} />}
+              {tab === 'matchup' && <MatchupStats rows={computeMatchups(filtered)} lang={lang} t={t} />}
               {tab === 'moves' && <MoveUsage rows={computeMoveUsageByMon(filtered)} lang={lang} t={t} />}
             </div>
           )}
@@ -322,13 +337,20 @@ function MegaCell({ id, label }: { id: string | null; label: string }) {
 }
 
 // ── Resumen ──────────────────────────────────────────────────────────────────
-function Overview({ matches, t }: { matches: MatchRecord[]; t: (s: string) => string }) {
+function Overview({ matches, lang, t }: { matches: MatchRecord[]; lang: 'es' | 'en'; t: (s: string) => string }) {
   const stats = useMemo(() => computeStats(matches), [matches]);
   return (
     <>
       <div className="grid gap-4 lg:grid-cols-3 items-start mb-4">
         <div className="panel p-4 animate-fade-in-up">
-          <h3 className="font-semibold mb-3">📈 {t('Resumen')}</h3>
+          <h3 className="font-semibold mb-3 flex items-center gap-1.5">
+            📈 {t('Resumen')}
+            <InfoTooltip label={t('Más información')}>
+              {lang === 'en'
+                ? 'Win rate is the percentage of games won out of your total analysed replays. The ring and the green/red bar show that split; the numbers below are wins, total games and losses.'
+                : 'El win rate es el porcentaje de partidas ganadas sobre el total de repeticiones analizadas. El aro y la barra verde/roja muestran ese reparto; los números de abajo son victorias, partidas totales y derrotas.'}
+            </InfoTooltip>
+          </h3>
           <div className="flex items-center gap-4">
             <WinRing winrate={stats.winrate} />
             <div className="flex-1 min-w-0">
@@ -345,7 +367,14 @@ function Overview({ matches, t }: { matches: MatchRecord[]; t: (s: string) => st
           </div>
         </div>
         <div className="panel p-4 animate-fade-in-up" style={{ animationDelay: '60ms' }}>
-          <h3 className="font-semibold mb-3">🧩 {t('Por equipo')}</h3>
+          <h3 className="font-semibold mb-3 flex items-center gap-1.5">
+            🧩 {t('Por equipo')}
+            <InfoTooltip label={t('Más información')}>
+              {lang === 'en'
+                ? 'Win rate broken down by each of your saved teams, so you can compare how they perform. Only teams matched to a replay appear here.'
+                : 'Win rate desglosado por cada uno de tus equipos guardados, para comparar cómo rinden. Solo aparecen los equipos asociados a alguna repetición.'}
+            </InfoTooltip>
+          </h3>
           <div className="space-y-2">
             {stats.byTeam.filter((ts) => ts.key !== '__none__').map((ts) => {
               const wr = pct(ts.wins, ts.total);
@@ -359,7 +388,14 @@ function Overview({ matches, t }: { matches: MatchRecord[]; t: (s: string) => st
           </div>
         </div>
         <div className="panel p-4 animate-fade-in-up" style={{ animationDelay: '120ms' }}>
-          <h3 className="font-semibold mb-3">🎯 {t('Leads más usados')}</h3>
+          <h3 className="font-semibold mb-3 flex items-center gap-1.5">
+            🎯 {t('Leads más usados')}
+            <InfoTooltip label={t('Más información')}>
+              {lang === 'en'
+                ? 'Leads are the two Pokémon you send out first each game. This lists your most frequent lead pairs with their win rate (wins/games), so you can see which openings actually work.'
+                : 'Los leads son los dos Pokémon que sacas al principio de cada partida. Aquí se listan tus parejas de lead más frecuentes con su win rate (victorias/partidas), para ver qué aperturas te funcionan de verdad.'}
+            </InfoTooltip>
+          </h3>
           {stats.leads.length === 0 ? <p className="text-sm text-gray-500">—</p> : (
             <div className="space-y-2">
               {stats.leads.map((l) => { const wr = pct(l.wins, l.total); return (
@@ -373,8 +409,30 @@ function Overview({ matches, t }: { matches: MatchRecord[]; t: (s: string) => st
         </div>
       </div>
       <div className="grid gap-4 lg:grid-cols-2 items-start">
-        <MonGrid title={`👹 ${t('Rivales más enfrentados')}`} mons={stats.topOpponents} total={stats.total} />
-        <MonGrid title={`📦 ${t('Tu bring-rate')}`} mons={stats.bring} total={stats.total} />
+        <MonGrid
+          title={`👹 ${t('Rivales más enfrentados')}`}
+          mons={stats.topOpponents}
+          total={stats.total}
+          info={
+            <InfoTooltip label={t('Más información')}>
+              {lang === 'en'
+                ? 'The Pokémon that appeared most often on your opponents’ teams, with how many games they showed up in. A quick read of what the meta is bringing against you.'
+                : 'Los Pokémon que más aparecen en los equipos rivales, con el número de partidas en que salieron. Una lectura rápida de lo que el meta trae contra ti.'}
+            </InfoTooltip>
+          }
+        />
+        <MonGrid
+          title={`📦 ${t('Tu bring-rate')}`}
+          mons={stats.bring}
+          total={stats.total}
+          info={
+            <InfoTooltip label={t('Más información')}>
+              {lang === 'en'
+                ? 'Bring-rate: how often you actually brought each of your Pokémon to Team Preview, and in what share of games. Shows which members you rely on most.'
+                : 'Bring-rate: con qué frecuencia llevaste cada uno de tus Pokémon a la vista previa, y en qué porcentaje de partidas. Muestra en qué miembros te apoyas más.'}
+            </InfoTooltip>
+          }
+        />
       </div>
     </>
   );
@@ -391,6 +449,14 @@ function GameByGame({ matches, onDelete, lang, t }: { matches: MatchRecord[]; on
 
   return (
     <>
+      <h3 className="font-semibold mb-3 flex items-center gap-1.5">
+        {t('Partida a partida')}
+        <InfoTooltip label={t('Más información')} side="bottom">
+          {lang === 'en'
+            ? 'Every analysed game, newest first: result, opponent, the full enemy team, what each side actually brought (leads ringed), Megas and turn count. Filter by an opposing Pokémon or open the original replay.'
+            : 'Todas las partidas analizadas, de más nueva a más antigua: resultado, rival, el equipo enemigo completo, lo que llevó cada lado (leads resaltados), Megas y número de turnos. Filtra por un Pokémon rival o abre la repetición original.'}
+        </InfoTooltip>
+      </h3>
       <input className="input-field mb-3" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Filtrar por Pokémon rival…')} />
       <div className="space-y-3">
         {shown.map((m, i) => {
@@ -438,12 +504,20 @@ function GameByGame({ matches, onDelete, lang, t }: { matches: MatchRecord[]; on
 }
 
 // ── Sets (Bo3/Bo5) ───────────────────────────────────────────────────────────
-function MatchByMatch({ sets, t }: { sets: MatchSet[]; t: (s: string) => string }) {
+function MatchByMatch({ sets, lang, t }: { sets: MatchSet[]; lang: 'es' | 'en'; t: (s: string) => string }) {
   const wins = sets.filter((s) => s.result === 'win').length;
   const losses = sets.filter((s) => s.result === 'loss').length;
   const wr = pct(wins, wins + losses);
   return (
     <>
+      <h3 className="font-semibold mb-3 flex items-center gap-1.5">
+        {t('Sets')}
+        <InfoTooltip label={t('Más información')} side="bottom">
+          {lang === 'en'
+            ? 'Games grouped into Best-of-3/Best-of-5 sets against the same opponent. Shows the set score, each individual game with the picks used, and your set win rate — the format that actually decides tournaments.'
+            : 'Partidas agrupadas en sets al mejor de 3/5 contra el mismo rival. Muestra el marcador del set, cada partida individual con los picks usados y tu win rate por sets, el formato que de verdad decide los torneos.'}
+        </InfoTooltip>
+      </h3>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
         <StatCard value={sets.length} label={t('Sets totales')} delay={0} />
         <StatCard value={wins} label={t('Ganados')} color="text-green-400" delay={60} />
@@ -514,13 +588,20 @@ function StatCard({ value, label, color = 'text-white', delay = 0 }: { value: nu
 }
 
 // ── Uso de Pokémon ───────────────────────────────────────────────────────────
-function UsageStats({ rows, leads, total, t }: { rows: MonUsage[]; leads: LeadStat[]; total: number; t: (s: string) => string }) {
+function UsageStats({ rows, leads, total, lang, t }: { rows: MonUsage[]; leads: LeadStat[]; total: number; lang: 'es' | 'en'; t: (s: string) => string }) {
   const common = [...leads].sort((a, b) => b.total - a.total).slice(0, 5);
   const best = [...leads].sort((a, b) => (b.wins / b.total) - (a.wins / a.total) || b.total - a.total).slice(0, 5);
   return (
     <>
       <div className="panel p-4 mb-4 overflow-x-auto animate-fade-in-up">
-        <h3 className="font-semibold mb-3">📊 {t('Rendimiento de tu equipo')}</h3>
+        <h3 className="font-semibold mb-3 flex items-center gap-1.5">
+          📊 {t('Rendimiento de tu equipo')}
+          <InfoTooltip label={t('Más información')}>
+            {lang === 'en'
+              ? 'Per-Pokémon breakdown: how often you brought it (Usage) and its win rate, plus lead usage/win rate and Mega usage/win rate. Percentages are computed only over games where that stat applies.'
+              : 'Desglose por Pokémon: con qué frecuencia lo llevaste (Uso) y su win rate, además del uso/win rate como lead y como Mega. Los porcentajes se calculan solo sobre las partidas donde aplica cada dato.'}
+          </InfoTooltip>
+        </h3>
         <table className="w-full text-sm min-w-[640px]">
           <thead>
             <tr className="text-xs uppercase text-gray-400 border-b border-poke-accent/30">
@@ -549,17 +630,39 @@ function UsageStats({ rows, leads, total, t }: { rows: MonUsage[]; leads: LeadSt
         </table>
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
-        <LeadList title={`👥 ${t('Leads más comunes')}`} leads={common} t={t} />
-        <LeadList title={`⭐ ${t('Mejores leads (Win %)')}`} leads={best} t={t} />
+        <LeadList
+          title={`👥 ${t('Leads más comunes')}`}
+          leads={common}
+          t={t}
+          info={
+            <InfoTooltip label={t('Más información')}>
+              {lang === 'en'
+                ? 'Your most frequently used lead pairs (the two Pokémon sent out first), ranked by how many games you opened with them, with their win-loss record.'
+                : 'Tus parejas de lead más usadas (los dos Pokémon que sacas primero), ordenadas por en cuántas partidas abriste con ellas, con su registro de victorias-derrotas.'}
+            </InfoTooltip>
+          }
+        />
+        <LeadList
+          title={`⭐ ${t('Mejores leads (Win %)')}`}
+          leads={best}
+          t={t}
+          info={
+            <InfoTooltip label={t('Más información')}>
+              {lang === 'en'
+                ? 'Your lead pairs ranked by win rate instead of frequency, so you can spot which openings win the most (not just which you use most).'
+                : 'Tus parejas de lead ordenadas por win rate en vez de por frecuencia, para ver qué aperturas ganan más (no solo las que más usas).'}
+            </InfoTooltip>
+          }
+        />
       </div>
     </>
   );
 }
 
-function LeadList({ title, leads, t }: { title: string; leads: LeadStat[]; t: (s: string) => string }) {
+function LeadList({ title, leads, t, info }: { title: string; leads: LeadStat[]; t: (s: string) => string; info?: ReactNode }) {
   return (
     <div className="panel p-4 animate-fade-in-up">
-      <h3 className="font-semibold mb-3">{title}</h3>
+      <h3 className="font-semibold mb-3 flex items-center gap-1.5">{title}{info}</h3>
       {leads.length === 0 ? <p className="text-sm text-gray-500">—</p> : (
         <div className="space-y-2">
           {leads.map((l, i) => { const wr = pct(l.wins, l.total); return (
@@ -578,7 +681,7 @@ function LeadList({ title, leads, t }: { title: string; leads: LeadStat[]; t: (s
 }
 
 // ── Matchups ─────────────────────────────────────────────────────────────────
-function MatchupStats({ rows, t }: { rows: Matchup[]; t: (s: string) => string }) {
+function MatchupStats({ rows, lang, t }: { rows: Matchup[]; lang: 'es' | 'en'; t: (s: string) => string }) {
   const enough = rows.filter((r) => r.games >= 3);
   const best = [...enough].sort((a, b) => (b.wins / b.games) - (a.wins / a.games)).slice(0, 5);
   const worst = [...enough].sort((a, b) => (a.wins / a.games) - (b.wins / b.games)).slice(0, 5);
@@ -586,21 +689,72 @@ function MatchupStats({ rows, t }: { rows: Matchup[]; t: (s: string) => string }
   const least = [...rows].sort((a, b) => a.games - b.games).slice(0, 5);
   return (
     <>
-      <p className="text-xs text-gray-500 mb-3">{t('Mejores/peores requieren al menos 3 enfrentamientos.')}</p>
+      <p className="text-xs text-gray-500 mb-3 inline-flex items-center gap-1.5">
+        {t('Mejores/peores requieren al menos 3 enfrentamientos.')}
+        <InfoTooltip label={t('Más información')} side="bottom">
+          {lang === 'en'
+            ? 'A matchup is how you fare against each opposing Pokémon: your win rate in games where that Pokémon appeared on the enemy team. Best/worst need at least 3 games to filter out noise; the other columns show the Pokémon you face most and least often.'
+            : 'Un matchup es cómo te va contra cada Pokémon rival: tu win rate en las partidas donde ese Pokémon estuvo en el equipo enemigo. Mejores/peores exigen al menos 3 partidas para evitar ruido; las otras columnas muestran los Pokémon que más y menos te enfrentas.'}
+        </InfoTooltip>
+      </p>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MatchupCol title={`📈 ${t('Mejores matchups')}`} rows={best} delay={0} />
-        <MatchupCol title={`📉 ${t('Peores matchups')}`} rows={worst} delay={80} />
-        <MatchupCol title={`👥 ${t('Más enfrentados')}`} rows={most} delay={160} />
-        <MatchupCol title={`👤 ${t('Menos enfrentados')}`} rows={least} delay={240} />
+        <MatchupCol
+          title={`📈 ${t('Mejores matchups')}`}
+          rows={best}
+          delay={0}
+          info={
+            <InfoTooltip label={t('Más información')}>
+              {lang === 'en'
+                ? 'Opposing Pokémon you win against most often (highest win rate), among those faced in at least 3 games.'
+                : 'Pokémon rivales contra los que más ganas (mayor win rate), entre los enfrentados en al menos 3 partidas.'}
+            </InfoTooltip>
+          }
+        />
+        <MatchupCol
+          title={`📉 ${t('Peores matchups')}`}
+          rows={worst}
+          delay={80}
+          info={
+            <InfoTooltip label={t('Más información')}>
+              {lang === 'en'
+                ? 'Opposing Pokémon that give you the most trouble (lowest win rate), among those faced in at least 3 games.'
+                : 'Pokémon rivales que más te cuestan (menor win rate), entre los enfrentados en al menos 3 partidas.'}
+            </InfoTooltip>
+          }
+        />
+        <MatchupCol
+          title={`👥 ${t('Más enfrentados')}`}
+          rows={most}
+          delay={160}
+          info={
+            <InfoTooltip label={t('Más información')}>
+              {lang === 'en'
+                ? 'The opposing Pokémon you have run into the most, regardless of result — a picture of what you face day to day.'
+                : 'Los Pokémon rivales con los que más te has cruzado, sin importar el resultado: una foto de lo que te encuentras a diario.'}
+            </InfoTooltip>
+          }
+        />
+        <MatchupCol
+          title={`👤 ${t('Menos enfrentados')}`}
+          rows={least}
+          delay={240}
+          info={
+            <InfoTooltip label={t('Más información')}>
+              {lang === 'en'
+                ? 'The opposing Pokémon you have faced the fewest times — rare matchups where your sample is still small.'
+                : 'Los Pokémon rivales que menos veces has enfrentado: matchups raros donde tu muestra aún es pequeña.'}
+            </InfoTooltip>
+          }
+        />
       </div>
     </>
   );
 }
 
-function MatchupCol({ title, rows, delay = 0 }: { title: string; rows: Matchup[]; delay?: number }) {
+function MatchupCol({ title, rows, delay = 0, info }: { title: string; rows: Matchup[]; delay?: number; info?: ReactNode }) {
   return (
     <div className="panel p-4 animate-fade-in-up" style={{ animationDelay: `${delay}ms` }}>
-      <h3 className="font-semibold mb-3 text-sm">{title}</h3>
+      <h3 className="font-semibold mb-3 text-sm flex items-center gap-1.5">{title}{info}</h3>
       {rows.length === 0 ? <p className="text-xs text-gray-500 text-center py-4">—</p> : (
         <div className="space-y-2">
           {rows.map((r, i) => { const wr = pct(r.wins, r.games); return (
@@ -624,7 +778,16 @@ function MatchupCol({ title, rows, delay = 0 }: { title: string; rows: Matchup[]
 function MoveUsage({ rows, lang, t }: { rows: MonMoves[]; lang: 'es' | 'en'; t: (s: string) => string }) {
   if (rows.length === 0) return <div className="panel p-8 text-center text-gray-400">{t('Sin datos de movimientos todavía.')}</div>;
   return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+    <>
+      <h3 className="font-semibold mb-3 flex items-center gap-1.5">
+        {t('Uso de movimientos')}
+        <InfoTooltip label={t('Más información')} side="bottom">
+          {lang === 'en'
+            ? 'For each of your Pokémon, the share of games in which it used each move (a pie per Pokémon). Reveals your real move choices across replays — useful for spotting predictable or unused options.'
+            : 'Para cada uno de tus Pokémon, el porcentaje de partidas en que usó cada movimiento (un gráfico por Pokémon). Revela tus elecciones reales de movimientos en las repeticiones, útil para detectar opciones predecibles o que no usas.'}
+        </InfoTooltip>
+      </h3>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       {rows.map((mon, i) => (
         <div key={mon.id} className="panel p-4 animate-fade-in-up transition-transform duration-150 hover:-translate-y-0.5" style={{ animationDelay: `${i * 60}ms` }}>
           <div className="flex items-center gap-2 mb-3">
@@ -634,7 +797,8 @@ function MoveUsage({ rows, lang, t }: { rows: MonMoves[]; lang: 'es' | 'en'; t: 
           {mon.total === 0 ? <p className="text-xs text-gray-500 text-center py-6">{t('Sin datos de movimientos')}</p> : <MovePie mon={mon} lang={lang} />}
         </div>
       ))}
-    </div>
+      </div>
+    </>
   );
 }
 
@@ -712,10 +876,10 @@ function MovePie({ mon, lang }: { mon: MonMoves; lang: 'es' | 'en' }) {
 }
 
 // ── Compartidos ──────────────────────────────────────────────────────────────
-function MonGrid({ title, mons, total }: { title: string; mons: MonStat[]; total: number }) {
+function MonGrid({ title, mons, total, info }: { title: string; mons: MonStat[]; total: number; info?: ReactNode }) {
   return (
     <div className="panel p-4 animate-fade-in-up">
-      <h3 className="font-semibold mb-3">{title}</h3>
+      <h3 className="font-semibold mb-3 flex items-center gap-1.5">{title}{info}</h3>
       {mons.length === 0 ? <p className="text-sm text-gray-500">—</p> : (
         <div className="flex flex-wrap gap-2">
           {mons.map((mon, i) => (
