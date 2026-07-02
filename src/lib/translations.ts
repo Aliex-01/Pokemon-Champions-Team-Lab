@@ -314,7 +314,6 @@ export const TRANSLATIONS: Record<string, string> = {
   'Zona Mágica': 'Magic Room',
   'Zona Extraña': 'Wonder Room',
   'Golpe crítico': 'Critical hit',
-  Pantallas: 'Screens',
   'Aliados KO': 'Allies fainted',
   'Daño por movimiento': 'Damage per move',
   'Tu Pokémon no tiene movimientos.': 'Your Pokémon has no moves.',
