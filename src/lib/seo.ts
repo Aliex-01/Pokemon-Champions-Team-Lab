@@ -19,8 +19,8 @@ const ROUTE_META: Record<string, RouteMeta> = {
       en: 'VGC Team Builder — Pokémon Champions Team Lab',
     },
     desc: {
-      es: 'Construye equipos de Pokémon Champions (VGC Reg M-B, dobles) con EVs en stat points, naturalezas, objetos y movimientos legales del formato.',
-      en: 'Build Pokémon Champions teams (VGC Reg M-B, doubles) with stat-point EVs, natures, items and format-legal moves.',
+      es: 'Construye equipos de Pokémon Champions (VGC Reg M-C, dobles) con EVs en stat points, naturalezas, objetos y movimientos legales del formato.',
+      en: 'Build Pokémon Champions teams (VGC Reg M-C, doubles) with stat-point EVs, natures, items and format-legal moves.',
     },
   },
   '/speed': {
@@ -79,8 +79,8 @@ const ROUTE_META: Record<string, RouteMeta> = {
       en: 'Tournament Teams VGC — Pokémon Champions Team Lab',
     },
     desc: {
-      es: 'Equipos de torneos de Pokémon Champions (Reg M-A/M-B): explóralos por evento o Pokémon e impórtalos a tu equipo.',
-      en: 'Pokémon Champions tournament teams (Reg M-A/M-B): browse by event or Pokémon and import them to your team.',
+      es: 'Equipos de torneos de Pokémon Champions (Reg M-A/M-C): explóralos por evento o Pokémon e impórtalos a tu equipo.',
+      en: 'Pokémon Champions tournament teams (Reg M-A/M-C): browse by event or Pokémon and import them to your team.',
     },
   },
   '/dex': {

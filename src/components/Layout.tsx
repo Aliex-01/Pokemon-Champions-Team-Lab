@@ -240,7 +240,7 @@ export function Layout() {
                 Pokémon Champions <span className="text-poke-pink">Team Lab</span>
               </p>
               <p className="text-xs text-gray-400 mt-0.5 whitespace-nowrap">
-                {t('Constructor y análisis de equipos para VGC Champions (Reg M-B, dobles).')}
+                {t('Constructor y análisis de equipos para VGC Champions.')}
               </p>
             </div>
           </div>

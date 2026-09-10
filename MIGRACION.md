@@ -84,7 +84,6 @@ Buscar y reemplazar el texto de la reg en:
 - `src/components/Layout.tsx`
 - `src/views/BuildsView.tsx` (aviso "Reg M-B aún no publicada…")
 - `src/lib/smogonStats.ts`
-- `scripts/og-image.svg` (imagen de previsualización)
 - `scripts/generate-data.mjs` (comentarios)
 
 **Ejemplo**:

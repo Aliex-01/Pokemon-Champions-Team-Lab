@@ -137,7 +137,7 @@ export function BuildsView({ data }: BuildsViewProps) {
           </InfoTooltip>
         </h2>
         {builds && !builds.format.includes('regmb') && (
-          <p className="text-xs text-amber-400 mt-1">{t('Reg M-B aún no publicada en Smogon: mostrando Reg M-A.')}</p>
+          <p className="text-xs text-amber-400 mt-1">{t('Reg M-C aún no publicada en Smogon: mostrando Reg M-A.')}</p>
         )}
       </div>
 

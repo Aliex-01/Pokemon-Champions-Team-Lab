@@ -110,10 +110,10 @@ export const TRANSLATIONS: Record<string, string> = {
   '+ Nuevo': '+ New',
   Renombrar: 'Rename',
   Eliminar: 'Delete',
-  'Datos: PokéAPI · Pokémon Showdown · Smogon Stats · Solo Pokémon legal en Champions Reg M-B':
-    'Data: PokéAPI · Pokémon Showdown · Smogon Stats · Only Pokémon legal in Champions Reg M-B',
-  'Constructor y análisis de equipos para VGC Champions (Reg M-B, dobles).':
-    'Team builder and analysis for VGC Champions (Reg M-B, doubles).',
+  'Datos: PokéAPI · Pokémon Showdown · Smogon Stats · Solo Pokémon legal en Champions Reg M-C':
+    'Data: PokéAPI · Pokémon Showdown · Smogon Stats · Only Pokémon legal in Champions Reg M-C',
+  'Constructor y análisis de equipos para VGC Champions (Reg M-C, dobles).':
+    'Team builder and analysis for VGC Champions (Reg M-C, doubles).',
   'Datos y código': 'Data & code',
   'Proyecto fan sin ánimo de lucro. Pokémon © Nintendo · Game Freak · The Pokémon Company.':
     'Non-profit fan project. Pokémon © Nintendo · Game Freak · The Pokémon Company.',
@@ -277,8 +277,8 @@ export const TRANSLATIONS: Record<string, string> = {
   PE: 'NVE',
 
   // ---- BuildsView ----
-  'Reg M-B aún no publicada en Smogon: mostrando Reg M-A.':
-    'Reg M-B not published on Smogon yet: showing Reg M-A.',
+  'Reg M-C aún no publicada en Smogon: mostrando Reg M-A.':
+    'Reg M-C not published on Smogon yet: showing Reg M-A.',
   'Cargando estadísticas…': 'Loading stats…',
   'No hay datos de builds. Ejecuta': 'No build data. Run',
   '.': '.',

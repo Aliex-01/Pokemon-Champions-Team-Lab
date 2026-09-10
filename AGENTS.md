@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
 
 ## Project
 
@@ -84,5 +84,5 @@ scripts/generate-tournament-teams.mjs ──→ public/data/tournament-teams.jso
 - No verifiques cambios abriendo el navegador/preview salvo que lo pida. Verifica solo con tsc --noEmit y lint; la comprobación visual la hago yo.
 
 ## Commits
-- NO añadas el trailer `Co-Authored-By: Claude ...` a los mensajes de commit. Ningún coautor, ninguna atribución a Claude/Anthropic.
-- Tampoco añadas `🤖 Generated with [Claude Code]` ni similares en los cuerpos de PR.
+- NO añadas el trailer `Co-Authored-By: Codex ...` a los mensajes de commit. Ningún coautor, ninguna atribución a Codex/Anthropic.
+- Tampoco añadas `🤖 Generated with [Codex]` ni similares en los cuerpos de PR.

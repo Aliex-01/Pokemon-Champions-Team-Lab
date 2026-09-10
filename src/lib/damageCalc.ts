@@ -188,6 +188,12 @@ export function calcMove(
     if (defender.ability === 'Eelevate' && move.type === 'Ground' && !field.gravity) {
       min = 0; max = 0; descNote = ' — Eelevate: inmune a Tierra';
     }
+    // Aura Guard (Aura Protectora) (Lucario-Mega-Z): reduce a la mitad el daño
+    // recibido de movimientos de contacto.
+    if (defender.ability === 'Aura Guard' && move.flags?.contact === 1) {
+      min = Math.floor(min * 0.5); max = Math.floor(max * 0.5);
+      descNote += ' — Aura Guard: contacto reducido 50%';
+    }
 
     // Protección (mecánica de Champions): bloquea salvo habilidades que la atraviesan
     // por contacto (Puño Invisible / Piercing Drill), que hacen el 25% del daño.
