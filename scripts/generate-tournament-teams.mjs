@@ -10,6 +10,7 @@ const SHEET_ID = '1axlwmzPA49rYkqXh7zHvAtSP-TKbM0ijGYBPRflLSWw';
 const SHEETS = [
   { gid: '791705272', reg: 'M-A' },
   { gid: '1458357160', reg: 'M-B' }, // pestaña «Champions M-B»
+  { gid: '2001945654', reg: 'M-C'}
 ];
 
 // Parser CSV mínimo (maneja comillas y saltos de línea dentro de celdas).
@@ -53,7 +54,7 @@ async function sheetTeams({ gid, reg }) {
   for (let r = headerIdx + 1; r < rows.length; r++) {
     const row = rows[r];
     const id = (row[iId] || '').trim();
-    if (!/^(?:PC|MB)\d+/i.test(id)) continue;
+    if (!/^(?:PC|MB|MC)\d+/i.test(id)) continue;
     const paste = pasteId(row[iPaste]);
     if (!paste) continue;
     // 6 especies a partir de la columna de copypasta (descartando celdas vacías).
