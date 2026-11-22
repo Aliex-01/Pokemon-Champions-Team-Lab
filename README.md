@@ -1,6 +1,6 @@
 # Pokémon Champions Team Lab
 
-Aplicación web personal para construir y analizar equipos de **Pokémon Champions** (VGC 2026 Reg M-B, dobles). Hecha con **React 19 + TypeScript + Vite + Tailwind CSS v4**, con backend serverless en **Cloudflare Pages Functions + D1** para las cuentas.
+Aplicación web personal para construir y analizar equipos de **Pokémon Champions** (VGC 2026 Reg M-B, dobles). Hecha con **React 19 + JavaScript + Vite + Tailwind CSS v4**, con backend serverless en **Cloudflare Pages Functions + D1** para las cuentas.
 
 ## Secciones
 
@@ -30,7 +30,7 @@ Registro/login opcional para guardar equipos y repeticiones en la nube y tenerlo
 
 ## Páginas ocultas (dev/admin)
 
-Algunas páginas (p. ej. *Equipos de torneo*) están ocultas en producción. Se controlan con `dev: true` en `NAV_ITEMS` ([src/components/Layout.tsx](src/components/Layout.tsx)) y se muestran solo si:
+Algunas páginas (p. ej. *Equipos de torneo*) están ocultas en producción. Se controlan con `dev: true` en `NAV_ITEMS` ([src/components/Layout.jsx](src/components/Layout.jsx)) y se muestran solo si:
 - estás en `localhost` (`import.meta.env.DEV`), o
 - tu usuario es **admin**: su correo está en la variable de entorno `ADMIN_EMAILS` de Cloudflare (el backend devuelve `isAdmin`).
 
@@ -58,7 +58,7 @@ Los datos se descargan en tiempo de generación y se guardan en `public/data/` (
 ```bash
 npm install
 npm run dev             # http://localhost:5173
-npm run build           # descarga datos (Showdown/Smogon/PokeAPI) + comprueba tipos + build de producción (dist/)
+npm run build           # descarga datos (Showdown/Smogon/PokeAPI) + build de producción (dist/)
 ```
 
 > `npm run build` ya regenera `public/data/` antes de compilar (`generate-data` + `generate-tournament-teams` + `generate-og`), así que es lo único necesario para refrescar los datos (incluido cuando Smogon publique Reg M-B). Cada `generate-*` puede ejecutarse suelto.
@@ -86,4 +86,4 @@ Desplegado en **Cloudflare Pages** (build command `npm run build`, output `dist/
 - **Reg M-B** aún no está en Smogon: la generación prueba `gen9championsvgc2026regmb` y cae a Reg M-A. En cuanto Smogon la publique, basta con `npm run build` para actualizar datos y quitar el aviso automáticamente.
 - Tras actualizaciones del mod Champions o para refrescar el meta, vuelve a ejecutar `npm run build` y redespliega.
 - Cuando salga **Reg M-C** (o posteriores): seguir el checklist con ejemplos en [`MIGRACION.md`](MIGRACION.md) (roster legal, `@pkmn`, slug de Smogon, etiquetas, pestaña del sheet de torneos).
-- Las habilidades nuevas de Z-A (Fire Mane, Dragonize, Eelevate, Mega Sol, Piercing Drill…) no las implementa `@smogon/calc`, así que están codificadas a mano en `src/lib/damageCalc.ts`.
+- Las habilidades nuevas de Z-A (Fire Mane, Dragonize, Eelevate, Mega Sol, Piercing Drill…) no las implementa `@smogon/calc`, así que están codificadas a mano en `src/lib/damageCalc.js`.

@@ -1,0 +1,159 @@
+import { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+import { useLang } from './i18n';
+
+export const SITE_URL = 'https://champions-team-lab.pages.dev';
+const SITE_NAME = 'Pokémon Champions Team Lab';
+
+// Título y descripción propios por ruta: en una SPA, sin esto todas las URLs
+// comparten metadatos y compiten entre sí en buscadores.
+const ROUTE_META = {
+  '/': {
+    title: {
+      es: 'Constructor de Equipos VGC — Pokémon Champions Team Lab',
+      en: 'VGC Team Builder — Pokémon Champions Team Lab',
+    },
+    desc: {
+      es: 'Construye equipos de Pokémon Champions (VGC Reg M-C, dobles) con EVs en stat points, naturalezas, objetos y movimientos legales del formato.',
+      en: 'Build Pokémon Champions teams (VGC Reg M-C, doubles) with stat-point EVs, natures, items and format-legal moves.',
+    },
+  },
+  '/speed': {
+    title: {
+      es: 'Speed Tier VGC — Pokémon Champions Team Lab',
+      en: 'VGC Speed Tier — Pokémon Champions Team Lab',
+    },
+    desc: {
+      es: 'Compara la velocidad de tu equipo con el meta de Champions: Tailwind ×2, Trick Room, Scarf y benchmarks neutros.',
+      en: "Compare your team's Speed against the Champions meta: Tailwind ×2, Trick Room, Scarf and neutral benchmarks.",
+    },
+  },
+  '/builds': {
+    title: {
+      es: 'Builds del Meta VGC — Pokémon Champions Team Lab',
+      en: 'Meta Builds VGC — Pokémon Champions Team Lab',
+    },
+    desc: {
+      es: 'Sets más usados del meta de Pokémon Champions: spreads de EVs, objetos, habilidades, naturalezas y compañeros por porcentaje de uso.',
+      en: 'Most-used Pokémon Champions meta sets: EV spreads, items, abilities, natures and teammates by usage.',
+    },
+  },
+  '/coverage': {
+    title: {
+      es: 'Cobertura de Tipos VGC — Pokémon Champions Team Lab',
+      en: 'Type Coverage VGC — Pokémon Champions Team Lab',
+    },
+    desc: {
+      es: 'Analiza la cobertura ofensiva y defensiva de tu equipo de Champions, con habilidades y debilidades compartidas.',
+      en: "Analyze your Champions team's offensive and defensive type coverage, including abilities and shared weaknesses.",
+    },
+  },
+  '/damage': {
+    title: {
+      es: 'Calculadora de Daño VGC — Pokémon Champions Team Lab',
+      en: 'Damage Calculator VGC — Pokémon Champions Team Lab',
+    },
+    desc: {
+      es: 'Calculadora de daño de Pokémon Champions (Gen 9, dobles): clima, terreno, pantallas, objetivo único o de área y sets del meta.',
+      en: 'Pokémon Champions damage calculator (Gen 9, doubles): weather, terrain, screens, single or spread target and meta sets.',
+    },
+  },
+  '/analysis': {
+    title: {
+      es: 'Análisis de Equipo VGC — Pokémon Champions Team Lab',
+      en: 'Team Analysis VGC — Pokémon Champions Team Lab',
+    },
+    desc: {
+      es: 'Análisis del equipo de Champions: arquetipo, puntuación por categoría, roles, sinergias, amenazas del meta y avisos.',
+      en: 'Champions team analysis: archetype, category score, roles, synergies, meta threats and warnings.',
+    },
+  },
+  '/tournament': {
+    title: {
+      es: 'Equipos de torneo VGC — Pokémon Champions Team Lab',
+      en: 'Tournament Teams VGC — Pokémon Champions Team Lab',
+    },
+    desc: {
+      es: 'Equipos de torneos de Pokémon Champions (Reg M-A/M-C): explóralos por evento o Pokémon e impórtalos a tu equipo.',
+      en: 'Pokémon Champions tournament teams (Reg M-A/M-C): browse by event or Pokémon and import them to your team.',
+    },
+  },
+  '/dex': {
+    title: {
+      es: 'Pokédex del formato VGC — Pokémon Champions Team Lab',
+      en: 'Format Pokédex VGC — Pokémon Champions Team Lab',
+    },
+    desc: {
+      es: 'Filtra los Pokémon legales de Pokémon Champions por movimientos que aprenden, tipos, habilidad y estadísticas base.',
+      en: 'Filter legal Pokémon Champions species by learnable moves, types, ability and base stats.',
+    },
+  },
+  '/optimizer': {
+    title: {
+      es: 'Optimizador de EVs VGC — Pokémon Champions Team Lab',
+      en: 'EV Optimizer VGC — Pokémon Champions Team Lab',
+    },
+    desc: {
+      es: 'Calcula los EVs mínimos para superar en velocidad, sobrevivir a un ataque o hacer OHKO/2HKO en Pokémon Champions (VGC).',
+      en: 'Compute the minimum EVs to outspeed, survive a hit or OHKO/2HKO in Pokémon Champions (VGC).',
+    },
+  },
+  '/replays': {
+    title: {
+      es: 'Análisis de Repeticiones VGC — Pokémon Champions Team Lab',
+      en: 'Replay Analysis VGC — Pokémon Champions Team Lab',
+    },
+    desc: {
+      es: 'Importa repeticiones de Pokémon Showdown y analiza tus resultados: win-rate por equipo, leads, bring-rate y rivales más enfrentados.',
+      en: 'Import Pokémon Showdown replays and analyze your results: win rate by team, leads, bring rate and most-faced opponents.',
+    },
+  },
+};
+
+const FALLBACK = ROUTE_META['/'];
+
+function setMeta(selector, attr, key, content) {
+  let el = document.head.querySelector(selector);
+  if (!el) {
+    el = document.createElement('meta');
+    el.setAttribute(attr, key);
+    document.head.appendChild(el);
+  }
+  el.setAttribute('content', content);
+}
+
+function setLink(rel, href) {
+  let el = document.head.querySelector(`link[rel="${rel}"]`);
+  if (!el) {
+    el = document.createElement('link');
+    el.setAttribute('rel', rel);
+    document.head.appendChild(el);
+  }
+  el.setAttribute('href', href);
+}
+
+/** Actualiza title, description, canonical y Open Graph/Twitter según la ruta y el idioma. */
+export function useRouteSeo() {
+  const { pathname } = useLocation();
+  const { lang } = useLang();
+
+  useEffect(() => {
+    const meta = ROUTE_META[pathname] ?? FALLBACK;
+    const title = meta.title[lang];
+    const desc = meta.desc[lang];
+    const url = SITE_URL + (pathname === '/' ? '' : pathname);
+
+    document.title = title;
+    setMeta('meta[name="description"]', 'name', 'description', desc);
+    setLink('canonical', url);
+
+    setMeta('meta[property="og:title"]', 'property', 'og:title', title);
+    setMeta('meta[property="og:description"]', 'property', 'og:description', desc);
+    setMeta('meta[property="og:url"]', 'property', 'og:url', url);
+    setMeta('meta[property="og:locale"]', 'property', 'og:locale', lang === 'es' ? 'es_ES' : 'en_US');
+    setMeta('meta[property="og:site_name"]', 'property', 'og:site_name', SITE_NAME);
+
+    setMeta('meta[name="twitter:title"]', 'name', 'twitter:title', title);
+    setMeta('meta[name="twitter:description"]', 'name', 'twitter:description', desc);
+  }, [pathname, lang]);
+}

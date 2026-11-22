@@ -1,0 +1,306 @@
+import { useState } from 'react';
+import { useTeam } from '../store/teamStore';
+import { PokemonEditor } from '../components/PokemonEditor';
+import { Toast } from '../components/Toast';
+import { SegmentedControl } from '../components/SegmentedControl';
+import { InfoTooltip } from '../components/InfoTooltip';
+import { useLang } from '../lib/i18n';
+import { getSpecies } from '../lib/championsData';
+import { convertInvestment } from '../lib/stats';
+import { parseShowdownTeam } from '../lib/showdownImport';
+
+const SHOWDOWN_STAT_LABELS = {
+  hp: 'HP', atk: 'Atk', def: 'Def', spa: 'SpA', spd: 'SpD', spe: 'Spe',
+};
+
+export function TeamBuilder({ data }) {
+  const { activeTeam, updatePokemon, setActiveTeamPokemon } = useTeam();
+  const [activeSlot, setActiveSlot] = useState(null);
+  const [dragIndex, setDragIndex] = useState(null);
+  const [overIndex, setOverIndex] = useState(null);
+  const [dropped, setDropped] = useState(null);
+  // Al cambiar de equipo, deseleccionar (sin hueco activo).
+  const [prevTeamId, setPrevTeamId] = useState(activeTeam?.id);
+
+  const { t, lang } = useLang();
+
+  if (!activeTeam) return null;
+
+  if (prevTeamId !== activeTeam.id) {
+    setPrevTeamId(activeTeam.id);
+    setActiveSlot(null);
+  }
+
+  // Reordena el equipo moviendo el Pokémon de `from` a la posición `to`.
+  const reorder = (from, to) => {
+    if (from === to) return;
+    const arr = [...activeTeam.pokemon];
+    const [moved] = arr.splice(from, 1);
+    arr.splice(to, 0, moved);
+    setActiveTeamPokemon(arr);
+    setActiveSlot(to);
+    setDropped(to);
+    setTimeout(() => setDropped(null), 350);
+  };
+
+  // Reordenar con teclado cuando una tarjeta tiene el foco.
+  const onCardKeyDown = (e, i) => {
+    // Solo si el foco está en la tarjeta misma, no en inputs/botones internos.
+    if (e.target !== e.currentTarget) return;
+    const last = activeTeam.pokemon.length - 1;
+    let to = null;
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') to = Math.max(0, i - 1);
+    else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') to = Math.min(last, i + 1);
+    else if (e.key === 'Home') to = 0;
+    else if (e.key === 'End') to = last;
+    if (to !== null) { e.preventDefault(); reorder(i, to); }
+  };
+
+  return (
+    <div className="page-enter">
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold flex items-center gap-2">
+          {t('Constructor de Equipo')}
+          <InfoTooltip side="bottom" label={t('Más información')}>
+            {lang === 'en'
+              ? 'Build your active team: pick species, ability, item, nature, moves and EVs for each of the 6 slots. Drag to reorder, and import/export in Showdown or Poképaste format.'
+              : 'Monta tu equipo activo: elige especie, habilidad, objeto, naturaleza, movimientos y EVs de cada uno de los 6 slots. Arrastra para reordenar, e importa/exporta en formato Showdown o Poképaste.'}
+          </InfoTooltip>
+        </h2>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mb-4">
+        {activeTeam.pokemon.map((mon, i) => (
+          <div
+            key={`${activeTeam.id}-${mon.slotId}`}
+            draggable
+            tabIndex={0}
+            role="button"
+            aria-label={`${mon.speciesName || t('Hueco vacío')} — ${t('posición')} ${i + 1}. ${t('Usa las flechas para reordenar.')}`}
+            onDragStart={(e) => { setDragIndex(i); e.dataTransfer.effectAllowed = 'move'; }}
+            onDragOver={(e) => { e.preventDefault(); if (dragIndex !== null) setOverIndex(i); }}
+            onDragLeave={() => setOverIndex((cur) => (cur === i ? null : cur))}
+            onDrop={(e) => { e.preventDefault(); if (dragIndex !== null) reorder(dragIndex, i); setDragIndex(null); setOverIndex(null); }}
+            onDragEnd={() => { setDragIndex(null); setOverIndex(null); }}
+            onKeyDown={(e) => onCardKeyDown(e, i)}
+            className={`animate-fade-in-up transition-all cursor-grab active:cursor-grabbing rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-poke-pink ${
+              dragIndex === i ? 'opacity-40' : ''
+            } ${overIndex === i && dragIndex !== i ? 'ring-2 ring-poke-pink scale-105' : ''}`}
+            style={{ animationDelay: `${i * 40}ms` }}
+          >
+            {/* drop-pop en un elemento aparte para no reiniciar el fade-in de entrada */}
+            <div className={`h-full ${dropped === i ? 'drop-pop' : ''}`}>
+              <PokemonEditor
+                data={data}
+                pokemon={mon}
+                slotIndex={i}
+                isActive={false}
+                isSelected={i === activeSlot}
+                onSelect={() => setActiveSlot(i)}
+                onUpdate={(updates) => updatePokemon(i, updates)}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {activeSlot !== null && (
+        <PokemonEditor
+          key={`${activeTeam.id}-${activeSlot}`}
+          data={data}
+          pokemon={activeTeam.pokemon[activeSlot]}
+          slotIndex={activeSlot}
+          isActive
+          onSelect={() => {}}
+          onUpdate={(updates) => updatePokemon(activeSlot, updates)}
+        />
+      )}
+
+      <ShowdownImport data={data} />
+      <ShowdownExport team={activeTeam} data={data} />
+    </div>
+  );
+}
+
+function ShowdownImport({ data }) {
+  const { setActiveTeamPokemon } = useTeam();
+  const { t, lang } = useLang();
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState('');
+  const [feedback, setFeedback] = useState('');
+  const [tone, setTone] = useState('success');
+  const [busy, setBusy] = useState(false);
+
+  const doImport = async () => {
+    let teamText = text;
+    // Si pegan una URL de pokepast.es, la descargamos vía proxy (evita CORS).
+    if (/^https?:\/\/(?:www\.)?pokepast\.es\/[a-zA-Z0-9]+/.test(text.trim())) {
+      setBusy(true);
+      try {
+        const res = await fetch(`/api/pokepaste?url=${encodeURIComponent(text.trim())}`);
+        const d = (await res.json());
+        if (!res.ok || !d.paste) throw new Error();
+        teamText = d.paste;
+      } catch {
+        setBusy(false);
+        setTone('error');
+        setFeedback(t('No se pudo cargar el Poképaste.'));
+        return;
+      }
+      setBusy(false);
+    }
+    const parsed = parseShowdownTeam(teamText, data);
+    if (parsed.length === 0) {
+      setTone('error');
+      setFeedback(t('No se reconoció ningún Pokémon. Pega un equipo en formato Showdown.'));
+      return;
+    }
+    setActiveTeamPokemon(parsed);
+    setTone('success');
+    setFeedback(`${t('Importados')} ${parsed.length} ${t('Pokémon al equipo activo.')}`);
+    setText('');
+    setOpen(false);
+  };
+
+  return (
+    <div className="panel p-4 mt-4">
+      <div className="flex justify-between items-center">
+        <h3 className="font-semibold flex items-center gap-1.5">
+          {t('Importar desde Showdown')}
+          <InfoTooltip label={t('Más información')}>
+            {lang === 'en'
+              ? 'Paste a team in Showdown format, or a pokepast.es URL, to load it into the active team.'
+              : 'Pega un equipo en formato Showdown, o una URL de pokepast.es, para cargarlo en el equipo activo.'}
+          </InfoTooltip>
+        </h3>
+        <button type="button" className="btn-secondary text-sm min-w-[96px] text-center" onClick={() => setOpen((o) => !o)}>
+          {open ? t('Cerrar') : t('Importar')}
+        </button>
+      </div>
+      {open && (
+        <div className="mt-3 space-y-2">
+          <textarea
+            className="input-field w-full h-48 font-mono text-xs"
+            placeholder={'Pega tu equipo de Showdown o una URL de pokepast.es...\n\nGarchomp @ Life Orb\nAbility: Rough Skin\nLevel: 50\nEVs: 252 Atk / 4 Def / 252 Spe\nJolly Nature\n- Earthquake\n- ...'}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+          />
+          <div className="flex items-center gap-3">
+            <button type="button" className="btn-primary text-sm" onClick={doImport} disabled={!text.trim() || busy}>
+              {busy ? t('Cargando…') : t('Reemplazar equipo activo')}
+            </button>
+            <span className="text-xs text-gray-400">{t('Sobrescribe los 6 slots del equipo actual.')}</span>
+          </div>
+        </div>
+      )}
+      <Toast message={feedback} onClose={() => setFeedback('')} tone={tone} />
+    </div>
+  );
+}
+
+function ShowdownExport({ team, data }) {
+  const { t, lang } = useLang();
+  const [copied, setCopied] = useState(false);
+  const [open, setOpen] = useState(false);
+  // 'full' = todo (EVs, naturaleza…); 'open' = lista abierta (sin EVs/naturaleza).
+  const [mode, setMode] = useState('full');
+
+  const exportText = team.pokemon
+    .filter((p) => p.speciesId)
+    .map((p) => {
+      const sp = getSpecies(p.speciesId);
+      const item = p.item || (sp?.isMega ? sp.megaStone : '') || '';
+      const lines = [`${p.speciesName}${item ? ` @ ${item}` : ''}`];
+      if (p.ability) lines.push(`Ability: ${p.ability}`);
+      if (mode === 'full' && sp?.isMega && p.preMegaAbility) {
+        lines.push(`Ability (base): ${p.preMegaAbility}`);
+      }
+      if (p.level && p.level !== 100) lines.push(`Level: ${p.level}`);
+      if (mode === 'full') {
+        // El formato Champions usa Stat Points: exportamos siempre en stat points
+        // (si el Pokémon estuviera en EVs tradicionales, lo convertimos).
+        const evs = p.evMode === 'champions' ? p.evs : convertInvestment(p.evs, 'traditional', 'champions');
+        const evLine = (['hp', 'atk', 'def', 'spa', 'spd', 'spe'])
+          .filter((k) => evs[k] > 0)
+          .map((k) => `${evs[k]} ${SHOWDOWN_STAT_LABELS[k]}`)
+          .join(' / ');
+        if (evLine) lines.push(`EVs: ${evLine}`);
+        lines.push(`${p.nature} Nature`);
+      }
+      for (const move of p.moves.filter(Boolean)) {
+        lines.push(`- ${data.moveNames?.[move] ?? move}`);
+      }
+      return lines.join('\n');
+    })
+    .join('\n\n');
+
+  const copy = () => {
+    navigator.clipboard.writeText(exportText);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  // Crea un Poképaste enviando el equipo a pokepast.es (form POST en pestaña
+  // nueva: evita CORS y devuelve directamente la página del paste creado).
+  const createPokepaste = () => {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = 'https://pokepast.es/create';
+    form.target = '_blank';
+    const add = (name, value) => {
+      const inp = document.createElement('input');
+      inp.type = 'hidden';
+      inp.name = name;
+      inp.value = value;
+      form.appendChild(inp);
+    };
+    add('paste', exportText);
+    add('title', team.name || 'Equipo');
+    add('author', '');
+    add('notes', mode === 'open' ? 'Lista abierta' : '');
+    document.body.appendChild(form);
+    form.submit();
+    form.remove();
+  };
+
+  if (!exportText) return null;
+
+  return (
+    <div className="panel p-4 mt-4">
+      <div className="flex justify-between items-center gap-2 flex-wrap">
+        <h3 className="font-semibold flex items-center gap-1.5">
+          {t('Exportar a Showdown')}
+          <InfoTooltip label={t('Más información')}>
+            {lang === 'en'
+              ? 'Copy the team in Showdown format, or create a Poképaste (a shareable pokepast.es link). “Open list” omits EVs, IVs and items.'
+              : 'Copia el equipo en formato Showdown, o crea un Poképaste (enlace de pokepast.es para compartir). «Lista abierta» omite EVs, IVs y objetos.'}
+          </InfoTooltip>
+        </h3>
+        <div className="flex items-center gap-2 flex-wrap">
+          <SegmentedControl
+            value={mode}
+            onChange={setMode}
+            options={[
+              { value: 'full', label: t('Completo') },
+              { value: 'open', label: t('Lista abierta') },
+            ]}
+          />
+          <button type="button" className="btn-primary text-sm min-w-[104px] text-center" onClick={copy}>
+            {copied ? t('¡Copiado!') : t('Copiar')}
+          </button>
+          <button type="button" className="btn-secondary text-sm" onClick={createPokepaste}>
+            {t('Crear Poképaste')}
+          </button>
+          <button type="button" className="btn-secondary text-sm min-w-[90px] text-center" onClick={() => setOpen((o) => !o)}>
+            {open ? t('Ocultar') : t('Mostrar')}
+          </button>
+        </div>
+      </div>
+      {open && (
+        <pre className="text-xs text-gray-300 bg-poke-dark/50 p-3 rounded-lg overflow-x-auto whitespace-pre-wrap mt-3">
+          {exportText}
+        </pre>
+      )}
+    </div>
+  );
+}

@@ -79,16 +79,16 @@ En `scripts/generate-data.mjs`:
 ## 4. Etiquetas "Reg M-B" → nueva reg
 Buscar y reemplazar el texto de la reg en:
 - `index.html` (título, meta description, OG, JSON-LD)
-- `src/lib/seo.ts`
-- `src/lib/translations.ts`
-- `src/components/Layout.tsx`
-- `src/views/BuildsView.tsx` (aviso "Reg M-B aún no publicada…")
-- `src/lib/smogonStats.ts`
+- `src/lib/seo.js`
+- `src/lib/translations.js`
+- `src/components/Layout.jsx`
+- `src/views/BuildsView.jsx` (aviso "Reg M-B aún no publicada…")
+- `src/lib/smogonStats.js`
 - `scripts/generate-data.mjs` (comentarios)
 
 **Ejemplo**:
 ```diff
-  // src/lib/seo.ts (y resto de archivos)
+  // src/lib/seo.js (y resto de archivos)
 - ... equipos VGC Champions (Reg M-B, dobles) ...
 + ... equipos VGC Champions (Reg M-C, dobles) ...
 ```
@@ -99,7 +99,7 @@ Buscar y reemplazar el texto de la reg en:
 - El gid se saca del `htmlview` del sheet (buscar el nombre "Champions M-C").
 - Los IDs de equipo por reg cambian de prefijo (M-A=`PC…`, M-B=`MB…`). El filtro
   está en `sheetTeams`: `/^(?:PC|MB)\d+/i` → añadir el prefijo nuevo (p. ej. `MC`).
-- Si hay filtro de reg en la UI, `src/views/TournamentTeamsView.tsx` lo deriva de
+- Si hay filtro de reg en la UI, `src/views/TournamentTeamsView.jsx` lo deriva de
   los datos (`regs`), así que aparece solo.
 
 **Ejemplo**:
@@ -125,7 +125,7 @@ node -e "fetch('https://docs.google.com/spreadsheets/d/1axlwmzPA49rYkqXh7zHvAtSP
 ```bash
 npm run generate-data            # roster, moves, items, builds
 npm run generate-tournament-teams
-npm run build                    # incluye los dos generate + tsc + vite
+npm run build                    # incluye los dos generate + vite
 ```
 Revisar que `public/data/champions.json` tiene los Pokémon nuevos y que
 `tournament-teams.json` trae la reg nueva. Luego push a `main` (deploy automático).
