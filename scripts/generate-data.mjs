@@ -68,18 +68,8 @@ const tierMap = JSON.parse(readNoBom('tiers.json'));
 const speciesList = [];
 const seen = new Set();
 
-// @pkmn/mods/champions aún no tiene bien los datos de algunas megas nuevas de
-// Z-A (Future/Past): aquí se corrige la habilidad a mano hasta que se actualice.
-const ABILITY_OVERRIDES = {
-  golisopodmega: ['Tough Claws'],
-  garchompmegaz: ['Levitate'],
-  absolmegaz: ['Sharpness'],
-  lucariomegaz: ['Aura Guard'],
-};
-
 for (const s of dex.species.all()) {
-  if ((s.isNonstandard && !allowedNums.has(s.num)) || s.forme === 'Totem' || s.forme === 'Starter') continue;
-  if (s.forme && /Gmax/.test(s.forme)) continue;
+  if (s.isNonstandard || s.forme === 'Totem' || s.forme === 'Starter') continue;
   if (cosmeticIds.has(s.id)) continue;
   if (!allowedNums.has(s.num)) continue;
 
@@ -92,9 +82,7 @@ for (const s of dex.species.all()) {
   seen.add(s.id);
 
   const types = [...s.types];
-  const abilities = ABILITY_OVERRIDES[s.id]
-    ? [...ABILITY_OVERRIDES[s.id]]
-    : Object.values(s.abilities || {}).filter(Boolean);
+  const abilities = Object.values(s.abilities || {}).filter(Boolean);
   const baseStats = { ...s.baseStats };
   const isMega = !!(s.forme && ['Mega', 'Mega-X', 'Mega-Y', 'Mega-Z'].includes(s.forme));
   let baseSpeciesId;
@@ -183,18 +171,8 @@ for (const sp of speciesList) {
   }
 }
 
-// Megapiedras nuevas de Z-A + objetos "Past" que la reg M-C legaliza, marcados
-// Past/Future por @pkmn/mods/champions (igual que pasaba con los Pokémon): se
-// rescatan a mano aunque isNonstandard las excluya.
-const FORCE_INCLUDE_ITEMS = new Set([
-  'Golisopite', 'Garchompite Z', 'Absolite Z', 'Lucarionite Z',
-  'Air Balloon', 'Binding Band', 'Eject Button', 'Electric Seed', 'Grassy Seed',
-  'Psychic Seed', 'Misty Seed', 'Leek', 'Normal Gem', 'Red Card', 'Rocky Helmet',
-  'Terrain Extender',
-]);
-
 for (const item of dex.items.all()) {
-  if (!item.isNonstandard || FORCE_INCLUDE_ITEMS.has(item.name)) items.add(item.name);
+  if (!item.isNonstandard) items.add(item.name);
 }
 
 // Spritenums de Showdown para los iconos de objeto (incluye piedras nuevas de Z-A
@@ -317,32 +295,6 @@ try {
 } catch (e) {
   console.warn('No se pudieron obtener nombres ES de PokeAPI (se usará inglés):', e.message);
 }
-
-// Megapiedras nuevas de Z-A que PokeAPI aún no tiene traducidas.
-const ITEM_ES_OVERRIDES = {
-  golisopite: 'Golisopodita',
-  garchompitez: 'Garchompita Z',
-  absolitez: 'Absolita Z',
-  lucarionitez: 'Lucarita Z',
-};
-
-let overriddenItems = 0;
-for (const [k, v] of Object.entries(ITEM_ES_OVERRIDES)) {
-  if (!esNames.items[k]) { esNames.items[k] = v; overriddenItems++; }
-}
-if (overriddenItems) console.log(`Nombres ES (override manual): ${overriddenItems} objetos`);
-
-// Habilidades nuevas de Z-A que PokeAPI aún no tiene traducidas (no existen en
-// ningún juego todavía, no se pueden sacar del CSV). Clave = nombre EN normalizado.
-const ABILITY_ES_OVERRIDES = {
-  auraguard: 'Aura Protectora',
-};
-
-let overriddenAbilities = 0;
-for (const [k, v] of Object.entries(ABILITY_ES_OVERRIDES)) {
-  if (!esNames.abilities[k]) { esNames.abilities[k] = v; overriddenAbilities++; }
-}
-if (overriddenAbilities) console.log(`Nombres ES (override manual): ${overriddenAbilities} habilidades`);
 
 // Rellena los que PokeAPI no trae en español (movimientos nuevos de Gen 9).
 let overridden = 0;
