@@ -6,6 +6,7 @@ export function Dropdown({
   options,
   onChange,
   render,
+  renderOption,
   placeholder = 'Seleccionar',
   expand = false,
   className = '',
@@ -49,7 +50,7 @@ export function Dropdown({
                 }`}
                 onClick={() => { onChange(o); setOpen(false); }}
               >
-                {render ? render(o) : o}
+                {renderOption ? renderOption(o) : render ? render(o) : o}
               </button>
             </li>
           ))}

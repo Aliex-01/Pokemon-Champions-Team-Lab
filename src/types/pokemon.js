@@ -24,6 +24,7 @@ export function createEmptyTeam(name) {
   return {
     id: crypto.randomUUID(),
     name,
+    tags: [],
     pokemon: Array.from({ length: 6 }, (_, i) => createEmptyPokemon(`slot-${i}`)),
     createdAt: now,
     updatedAt: now,

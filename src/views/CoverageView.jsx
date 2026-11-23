@@ -8,7 +8,7 @@ import { useLang } from '../lib/i18n';
 
 // Habilidades que dan inmunidad a un tipo (defensiva).
 const ABILITY_IMMUNE = {
-  Levitate: 'Ground', 'Earth Eater': 'Ground',
+  Levitate: 'Ground', 'Earth Eater': 'Ground', Eelevate: 'Ground',
   'Water Absorb': 'Water', 'Storm Drain': 'Water', 'Dry Skin': 'Water',
   'Volt Absorb': 'Electric', 'Lightning Rod': 'Electric', 'Motor Drive': 'Electric',
   'Flash Fire': 'Fire', 'Well-Baked Body': 'Fire',
@@ -18,11 +18,18 @@ const ABILITY_IMMUNE = {
 const ABILITY_RESIST = {
   'Thick Fat': ['Fire', 'Ice'], Heatproof: ['Fire'], 'Water Bubble': ['Fire'], 'Purifying Salt': ['Ghost'],
 };
+// Habilidades que añaden debilidad a un tipo.
+const ABILITY_WEAK = {
+  Fluffy: { Fire: 2 },
+  'Dry Skin': { Fire: 1.25 },
+};
 
 function applyAbility(mult, attackType, ability) {
   if (!ability) return mult;
   if (ABILITY_IMMUNE[ability] === attackType) return 0;
   if (ABILITY_RESIST[ability]?.includes(attackType)) return mult * 0.5;
+  const weakMult = ABILITY_WEAK[ability]?.[attackType];
+  if (weakMult) return mult * weakMult;
   return mult;
 }
 
@@ -44,13 +51,26 @@ function abilityMoveType(moveType, ability) {
   return moveType;
 }
 
+// Efectividad ofensiva de un movimiento concreto frente a un tipo defensor,
+// contemplando excepciones como Liofilización (Freeze-Dry), Plancha Voladora
+// (Flying Press) y Mil Flechas (Thousand Arrows).
+function moveEffAgainstType(move, targetType, tc) {
+  if (move.id === 'freezedry' && targetType === 'Water') return 2;
+  if (move.id === 'flyingpress') {
+    return getTypeEffectiveness('Fighting', [targetType], tc) * getTypeEffectiveness('Flying', [targetType], tc);
+  }
+  if (move.id === 'thousandarrows' && targetType === 'Flying') return 1;
+  return getTypeEffectiveness(move.type, [targetType], tc);
+}
+
 function effLabel(m) {
   if (m === 0) return '0';
   if (m === 0.25) return '/4';
   if (m === 0.5) return '/2';
+  if (m === 1) return '';
   if (m === 2) return '2';
   if (m === 4) return '4';
-  return '';
+  return String(Number(m.toFixed(2)));
 }
 
 // Defensiva: débil = rojo, resiste = verde, inmune = azul.
@@ -79,17 +99,13 @@ export function CoverageView({ data }) {
       .filter((p) => p.speciesId)
       .map((p) => {
         const sp = getSpecies(p.speciesId);
-        const moveTypes = [
-          ...new Set(
-            p.moves
-              .filter(Boolean)
-              .map((id) => data.moveData?.[id])
-              .filter((md) => !!md && md.category !== 'Status')
-              // Aplica habilidades "-ate" (Pixilate, etc.): un ataque Normal pasa a su tipo real.
-              .map((md) => abilityMoveType(md.type, p.ability))
-          ),
-        ];
-        return { name: p.speciesName, speciesId: p.speciesId, ability: p.ability, types: sp?.types ?? [], moveTypes };
+        const attackMoves = p.moves
+          .filter(Boolean)
+          .map((id) => ({ id, md: data.moveData?.[id] }))
+          .filter(({ md }) => !!md && md.category !== 'Status')
+          // Aplica habilidades "-ate" (Pixilate, etc.): un ataque Normal pasa a su tipo real.
+          .map(({ id, md }) => ({ id, type: abilityMoveType(md.type, p.ability) }));
+        return { name: p.speciesName, speciesId: p.speciesId, ability: p.ability, types: sp?.types ?? [], attackMoves };
       });
   }, [activeTeam, data]);
 
@@ -97,21 +113,25 @@ export function CoverageView({ data }) {
 
   const cellValue = (type, mon) => {
     if (mode === 'def') return applyAbility(getTypeEffectiveness(type, mon.types, tc), type, mon.ability);
-    return mon.moveTypes.length ? Math.max(...mon.moveTypes.map((t) => getTypeEffectiveness(t, [type], tc))) : 1;
+    return mon.attackMoves.length ? Math.max(...mon.attackMoves.map((mv) => moveEffAgainstType(mv, type, tc))) : 1;
   };
 
-  // Análisis: tipos a los que el equipo es muy débil y huecos ofensivos.
+  // Análisis: tipos a los que el equipo es muy débil, tipos sin resistencia y huecos ofensivos.
   const analysis = useMemo(() => {
     const weakTypes = [];
+    const noResistTypes = [];
     const offGaps = [];
     for (const type of TYPE_NAMES) {
-      const defWeak = team.filter((m) => applyAbility(getTypeEffectiveness(type, m.types, tc), type, m.ability) > 1).length;
+      const defVals = team.map((m) => applyAbility(getTypeEffectiveness(type, m.types, tc), type, m.ability));
+      const defWeak = defVals.filter((v) => v > 1).length;
+      const defResOrImm = defVals.filter((v) => v < 1).length;
       if (defWeak >= 3) weakTypes.push({ type, count: defWeak });
-      const se = team.filter((m) => m.moveTypes.length && Math.max(...m.moveTypes.map((t) => getTypeEffectiveness(t, [type], tc))) > 1).length;
+      if (team.length > 0 && defResOrImm === 0) noResistTypes.push(type);
+      const se = team.filter((m) => m.attackMoves.length && Math.max(...m.attackMoves.map((mv) => moveEffAgainstType(mv, type, tc))) > 1).length;
       if (se === 0) offGaps.push(type);
     }
     weakTypes.sort((a, b) => b.count - a.count);
-    return { weakTypes, offGaps };
+    return { weakTypes, noResistTypes, offGaps };
   }, [team, tc]);
 
   const effClass = mode === 'def' ? effClassDef : effClassOff;
@@ -151,14 +171,24 @@ export function CoverageView({ data }) {
         <div className="panel p-6 text-gray-400 text-center">{t('Añade Pokémon a tu equipo para ver la cobertura.')}</div>
       ) : (
         <>
-          {mode === 'def' && analysis.weakTypes.length > 0 && (
-            <div className="panel p-3 mb-4">
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-sm text-red-400 font-semibold mr-1">{t('Debilidades comunes (3+):')}</span>
-                {analysis.weakTypes.map(({ type, count }) => (
-                  <span key={type} className={`type-${type.toLowerCase()} px-2 py-0.5 rounded text-xs font-medium`}>{type} ×{count}</span>
-                ))}
-              </div>
+          {mode === 'def' && (analysis.weakTypes.length > 0 || analysis.noResistTypes.length > 0) && (
+            <div className="panel p-3 mb-4 space-y-2">
+              {analysis.weakTypes.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-sm text-red-400 font-semibold mr-1">{t('Debilidades comunes (3+):')}</span>
+                  {analysis.weakTypes.map(({ type, count }) => (
+                    <span key={type} className={`type-${type.toLowerCase()} px-2 py-0.5 rounded text-xs font-medium`}>{type} ×{count}</span>
+                  ))}
+                </div>
+              )}
+              {analysis.noResistTypes.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-sm text-amber-400 font-semibold mr-1">{t('Sin resistencia (0 res/inm):')}</span>
+                  {analysis.noResistTypes.map((type) => (
+                    <span key={type} className={`type-${type.toLowerCase()} px-2 py-0.5 rounded text-xs font-medium opacity-85`}>{type}</span>
+                  ))}
+                </div>
+              )}
             </div>
           )}
           {mode === 'off' && (
@@ -166,7 +196,7 @@ export function CoverageView({ data }) {
               <div className="flex flex-wrap items-center gap-1.5">
                 <span className="text-sm text-amber-400 font-semibold mr-1">{t('Huecos ofensivos:')}</span>
                 {analysis.offGaps.length === 0 ? (
-                  <span className="text-xs text-green-400">{t('Golpeas supereficaz a todos los tipos 🎉')}</span>
+                  <span className="text-xs text-green-400">{t('Golpeas supereficaz a todos los tipos')}</span>
                 ) : (
                   analysis.offGaps.map((type) => (
                     <span key={type} className={`type-${type.toLowerCase()} px-2 py-0.5 rounded text-xs font-medium opacity-80`}>{type}</span>

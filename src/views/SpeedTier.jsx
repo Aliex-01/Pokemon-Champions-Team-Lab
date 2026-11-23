@@ -1,14 +1,30 @@
 import { useMemo, useState, useEffect, useLayoutEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useTeam } from '../store/teamStore';
 import { calcAllStats } from '../lib/stats';
 import { getSpecies, localizeName } from '../lib/championsData';
 import { loadMetaBuilds } from '../lib/metaBuilds';
 import { PokemonSprite } from '../components/PokemonSprite';
+import { Dropdown } from '../components/Dropdown';
 import { InfoTooltip } from '../components/InfoTooltip';
 import { useFlip } from '../lib/useFlip';
 import { useLang } from '../lib/i18n';
+import { TYPE_NAMES } from '../lib/typeChart';
 
 const CUSTOM_KEY = 'speedtier-custom';
+const TOP_KEY = 'speedtier-topN';
+const TOP_OPTIONS = [25, 50, 75, 100, 150, 0]; // 0 = todos los de Smogon
+
+function loadTopN() {
+  try {
+    const raw = localStorage.getItem(TOP_KEY);
+    if (raw != null) {
+      const n = parseInt(raw, 10);
+      if (TOP_OPTIONS.includes(n)) return n;
+    }
+  } catch { /* ignore */ }
+  return 50;
+}
 
 function loadCustom() {
   try {
@@ -32,26 +48,8 @@ const SPEED_ABILITIES = {
   'Surge Surfer': 2, Unburden: 2, 'Quick Feet': 1.5,
 };
 
-// Tiers que se muestran en la tabla de referencia.
+// Fallback de tiers solo mientras carga builds.json (si Smogon no está disponible).
 const KEPT_TIERS = new Set(['S', 'A', 'B']);
-
-// Pokémon de otros tiers que se incluyen igualmente (por interés del usuario).
-const EXTRA_INCLUDE = new Set(['ninetales', 'ninetalesalola', 'hydrapple']);
-
-// Pokémon que se excluyen de la tabla.
-// (aegislashblade se omite: comparte velocidad con la base Aegislash, que la representa).
-const EXTRA_EXCLUDE = new Set([
-  'furfrou', 'ditto', 'aegislashblade',
-  'pikachu', 'stunfisk', 'stunfiskgalar', 'musharna', 'pangoro',
-  'glaceon', 'flareon', 'houndstone', 'slurpuff', 'qwilfish',
-  'gourgeist', 'gourgeistsmall', 'gourgeistlarge', 'gourgeistsuper',
-]);
-
-// Formas electrodoméstico de Rotom: misma velocidad, se muestran como una sola fila.
-const ROTOM_APPLIANCE = new Set(['rotomheat', 'rotomwash', 'rotomfrost', 'rotomfan', 'rotommow']);
-
-// Toda la familia Slowbro/Slowking (misma velocidad) se trata como un solo Pokémon.
-const SLOW_FAMILY = new Set(['slowbro', 'slowbrogalar', 'slowbromega', 'slowking', 'slowkinggalar']);
 
 const MAX_IVS = { hp: 31, atk: 31, def: 31, spa: 31, spd: 31, spe: 31 };
 
@@ -64,10 +62,10 @@ const WEATHER_SPEED_ABILITY = {
 };
 
 const WEATHER_LABEL = {
-  sun: '☀ Sol',
-  rain: '🌧 Lluvia',
-  snow: '❄ Nieve',
-  sand: '☷ Arena',
+  sun: 'Sol',
+  rain: 'Lluvia',
+  snow: 'Nieve',
+  sand: 'Arena',
 };
 
 /** Velocidad a nivel 50 con la inversión y naturaleza dadas (modo champions = stat points). */
@@ -91,6 +89,8 @@ function preferRep(a, b) {
 export function SpeedTierView({ data }) {
   const { activeTeam } = useTeam();
   const { t, lang } = useLang();
+  const [searchParams] = useSearchParams();
+  const monParam = searchParams.get('mon');
   const [tailwind, setTailwind] = useState(false);
   const [weather, setWeather] = useState('none');
   const [trickRoom, setTrickRoom] = useState(false);
@@ -99,7 +99,13 @@ export function SpeedTierView({ data }) {
   const [showAbilities, setShowAbilities] = useState(false);
   const [showScarf, setShowScarf] = useState(false);
   const [builds, setBuilds] = useState(null);
+  const [topN, setTopN] = useState(loadTopN);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
+  const [speedMin, setSpeedMin] = useState('');
+  const [speedMax, setSpeedMax] = useState('');
   useEffect(() => { loadMetaBuilds().then(setBuilds); }, []);
+  useEffect(() => { localStorage.setItem(TOP_KEY, String(topN)); }, [topN]);
   const [userInclude, setUserInclude] = useState(() => new Set(loadCustom().include));
   const [userExclude, setUserExclude] = useState(() => new Set(loadCustom().exclude));
 
@@ -119,25 +125,41 @@ export function SpeedTierView({ data }) {
 
   const benchmarks = useMemo(() => (showNeutral ? BENCHMARKS : BENCHMARKS.filter((b) => !b.neutral)), [showNeutral]);
 
+  // Ranking de uso de Smogon (ordenado de mayor a menor % de uso).
+  const usageRankedIds = useMemo(() => {
+    if (!builds?.pokemon) return [];
+    const validIds = new Set(data.species.map((s) => s.id));
+    return Object.entries(builds.pokemon)
+      .filter(([id]) => validIds.has(id))
+      .sort((a, b) => b[1].usage - a[1].usage)
+      .map(([id]) => id);
+  }, [builds, data.species]);
+
+  const topUsageSet = useMemo(() => {
+    if (usageRankedIds.length === 0) return null;
+    const slice = topN > 0 ? usageRankedIds.slice(0, topN) : usageRankedIds;
+    return new Set(slice);
+  }, [usageRankedIds, topN]);
+
   // Entradas de referencia (benchmarks). NO dependen de Tailwind/clima/TR/unburden,
   // así que se calculan una vez y no se rehacen en cada toggle del entorno.
   const benchmarkEntries = useMemo(() => {
     const entries = [];
 
-    // Pokémon de referencia incluidos (S/A/B + extras, sin exclusiones ni colapsos especiales).
-    const isIncluded = (sp) =>
-      !EXTRA_EXCLUDE.has(sp.id) &&
-      !userExclude.has(sp.id) &&
-      !ROTOM_APPLIANCE.has(sp.id) &&
-      !SLOW_FAMILY.has(sp.id) &&
-      (KEPT_TIERS.has(sp.tier ?? '') || EXTRA_INCLUDE.has(sp.id) || userInclude.has(sp.id));
+    // Pokémon de referencia incluidos: Top N de uso en Smogon (+ añadidos manuales, − excluidos).
+    const isIncluded = (sp) => {
+      if (userExclude.has(sp.id)) return false;
+      if (userInclude.has(sp.id)) return true;
+      if (topUsageSet) return topUsageSet.has(sp.id);
+      return KEPT_TIERS.has(sp.tier ?? '');
+    };
 
     // Colapsa formas del mismo Pokémon (mismo nº de dex) que comparten velocidad base
     // (megas con misma velocidad, Tauros de Paldea, Basculegion ♂/♀, etc.).
     const collapseSkip = new Set();
     const rep = new Map();
     for (const sp of data.species) {
-      if (!isIncluded(sp)) continue;
+      if (!isIncluded(sp) || userInclude.has(sp.id)) continue;
       const k = `${sp.num}-${sp.baseStats.spe}`;
       const cur = rep.get(k);
       if (!cur) { rep.set(k, sp); continue; }
@@ -186,10 +208,8 @@ export function SpeedTierView({ data }) {
           });
         }
       }
-      // Filas extra con Choice Scarf (×1.5) si es tier S/A y su uso supera el 20%
-      // (Garchomp se incluye como excepción; Floette-Eternal se excluye: su tier es
-      // por la mega, no por la forma base).
-      if (showScarf && sp.id !== 'floetteeternal' && (sp.tier === 'S' || sp.tier === 'A') && (scarfPct(sp.id) > 20 || sp.id === 'garchomp')) {
+      // Filas extra con Choice Scarf (×1.5) para portadores frecuentes en Smogon (>20%).
+      if (showScarf && scarfPct(sp.id) > 20) {
         for (const b of benchmarks) {
           if (b.spe === 0) continue;
           entries.push({
@@ -207,59 +227,8 @@ export function SpeedTierView({ data }) {
       }
     }
 
-    // Rotom electrodoméstico colapsado (todas comparten velocidad).
-    const appliance = data.species.find((s) => ROTOM_APPLIANCE.has(s.id));
-    if (appliance) {
-      for (const b of benchmarks) {
-        entries.push({
-          key: `rotom-appliance-${b.label}`,
-          name: 'Rotom (electrodom.)',
-          speciesId: 'rotom',
-          types: ['Electric'],
-          baseSpe: appliance.baseStats.spe,
-          speed: speedOf(appliance.baseStats, b.spe, b.nature),
-          variant: b.label,
-          isTeam: false,
-        });
-      }
-      // Rotom como tier A: Choice Scarf según el uso de la forma Horno.
-      if (showScarf && scarfPct('rotomheat') > 20) {
-        for (const b of benchmarks) {
-          if (b.spe === 0) continue;
-          entries.push({
-            key: `rotom-appliance-${b.label}-scarf`,
-            name: 'Rotom (electrodom.)',
-            speciesId: 'rotom',
-            types: ['Electric'],
-            baseSpe: appliance.baseStats.spe,
-            speed: Math.floor(speedOf(appliance.baseStats, b.spe, b.nature) * 1.5),
-            variant: b.label,
-            isTeam: false,
-            boostItem: 'Choice Scarf',
-          });
-        }
-      }
-    }
-
-    // Familia Slowbro/Slowking colapsada (todas comparten velocidad).
-    const slow = data.species.find((s) => SLOW_FAMILY.has(s.id));
-    if (slow) {
-      for (const b of benchmarks) {
-        entries.push({
-          key: `slow-family-${b.label}`,
-          name: 'Slowbro / Slowking',
-          speciesId: 'slowbro',
-          types: ['Water', 'Psychic'],
-          baseSpe: slow.baseStats.spe,
-          speed: speedOf(slow.baseStats, b.spe, b.nature),
-          variant: b.label,
-          isTeam: false,
-        });
-      }
-    }
-
     return entries;
-  }, [data, benchmarks, showAbilities, showScarf, builds, userInclude, userExclude]);
+  }, [data, benchmarks, showAbilities, showScarf, builds, userInclude, userExclude, topUsageSet]);
 
   const { groups, summary, shownIds } = useMemo(() => {
     const entries = [];
@@ -375,10 +344,49 @@ export function SpeedTierView({ data }) {
     return { groups: out, summary, shownIds };
   }, [activeTeam, tailwind, weather, trickRoom, unburden, lang, benchmarkEntries]);
 
+  const hasTableFilters = Boolean(searchQuery.trim() || typeFilter || speedMin !== '' || speedMax !== '');
+  const clearTableFilters = () => {
+    setSearchQuery('');
+    setTypeFilter('');
+    setSpeedMin('');
+    setSpeedMax('');
+  };
+
+  const visibleGroups = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    const minV = speedMin === '' ? null : parseInt(speedMin, 10);
+    const maxV = speedMax === '' ? null : parseInt(speedMax, 10);
+    if (!q && !typeFilter && minV == null && maxV == null) return groups;
+
+    const out = [];
+    for (const g of groups) {
+      // Tus Pokémon siempre permanecen visibles para comparar su velocidad con lo filtrado.
+      if (g.hasTeam) {
+        out.push(g);
+        continue;
+      }
+      if (minV != null && !Number.isNaN(minV) && g.speed < minV) continue;
+      if (maxV != null && !Number.isNaN(maxV) && g.speed > maxV) continue;
+      if (!q && !typeFilter) {
+        out.push(g);
+        continue;
+      }
+      const matched = g.items.filter((e) => {
+        if (typeFilter && !e.types.includes(typeFilter)) return false;
+        if (q && !e.name.toLowerCase().includes(q) && !e.speciesId.includes(q.replace(/\s+/g, ''))) return false;
+        return true;
+      });
+      if (matched.length > 0) {
+        out.push({ ...g, items: matched });
+      }
+    }
+    return out;
+  }, [groups, searchQuery, typeFilter, speedMin, speedMax]);
+
   const maxSpeed = Math.max(1, ...groups.map((g) => g.speed));
 
   // Las filas se deslizan a su nueva posición al reordenar (Tailwind, TR, Scarf…).
-  const flipBodyRef = useFlip(groups);
+  const flipBodyRef = useFlip(visibleGroups);
 
   // id de fila a partir de su key (sin caracteres problemáticos para el DOM).
   const tableScrollRef = useRef(null);
@@ -397,6 +405,16 @@ export function SpeedTierView({ data }) {
     void el.offsetWidth; // reinicia la animación
     el.classList.add('row-flash');
   };
+
+  // Si se llega desde un atajo del Team Builder (?mon=speciesId), centra su fila.
+  useEffect(() => {
+    if (!monParam) return;
+    const entry = summary.find((s) => s.speciesId === monParam);
+    if (!entry) return;
+    const id = setTimeout(() => goToRow(entry.key), 180);
+    return () => clearTimeout(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [monParam]);
 
   // Al entrar, las barras crecen desde 0 hasta su anchura (transición en el render).
   // setTimeout (no rAF) para que dispare aunque la pestaña no esté en primer plano.
@@ -431,7 +449,7 @@ export function SpeedTierView({ data }) {
       }
     });
     prevRects.current = newRects;
-  }, [groups]);
+  }, [visibleGroups]);
 
   const toggleWeather = (w) => setWeather((cur) => (cur === w ? 'none' : w));
 
@@ -504,7 +522,14 @@ export function SpeedTierView({ data }) {
               <button
                 type="button"
                 key={s.key}
-                onClick={() => goToRow(s.key)}
+                onClick={() => {
+                  if (hasTableFilters) {
+                    clearTableFilters();
+                    setTimeout(() => goToRow(s.key), 60);
+                  } else {
+                    goToRow(s.key);
+                  }
+                }}
                 title={t('Ver en la tabla')}
                 className="flex items-center gap-2 bg-poke-dark/40 rounded-lg px-2 py-1.5 text-left w-full transition-colors hover:bg-poke-dark/70 active:scale-[0.98]"
               >
@@ -525,6 +550,64 @@ export function SpeedTierView({ data }) {
         </div>
       )}
 
+      <div className="panel p-3 mb-3 flex flex-wrap items-center gap-2">
+        <Dropdown
+          className="w-44 shrink-0"
+          value={String(topN)}
+          options={TOP_OPTIONS.map(String)}
+          onChange={(v) => setTopN(parseInt(v, 10))}
+          render={(v) => {
+            const n = parseInt(v, 10);
+            return n === 0
+              ? `${t('Todos')} (${usageRankedIds.length || 'Smogon'})`
+              : `Top ${n} Smogon`;
+          }}
+        />
+        <input
+          className="input-field flex-1 min-w-[11rem]"
+          placeholder={t('Buscar Pokémon en la tabla…')}
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+        <Dropdown
+          className="w-40 shrink-0"
+          value={typeFilter}
+          options={['', ...TYPE_NAMES]}
+          placeholder={t('Todos los tipos')}
+          render={(ty) => (ty ? ty : t('Todos los tipos'))}
+          onChange={setTypeFilter}
+        />
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className="text-xs text-gray-400">{t('Vel.')}</span>
+          <input
+            type="number"
+            min={0}
+            className="no-spinner input-field w-20 text-center"
+            placeholder={t('Mín')}
+            value={speedMin}
+            onChange={(e) => setSpeedMin(e.target.value)}
+          />
+          <span className="text-gray-500">–</span>
+          <input
+            type="number"
+            min={0}
+            className="no-spinner input-field w-20 text-center"
+            placeholder={t('Máx')}
+            value={speedMax}
+            onChange={(e) => setSpeedMax(e.target.value)}
+          />
+        </div>
+        {hasTableFilters && (
+          <button
+            type="button"
+            className="text-xs text-poke-pink hover:underline px-1"
+            onClick={clearTableFilters}
+          >
+            {t('Limpiar')}
+          </button>
+        )}
+      </div>
+
       <div className="panel overflow-hidden">
         <div ref={tableScrollRef} className="max-h-[72vh] overflow-auto">
         <table className="w-full text-sm">
@@ -537,7 +620,13 @@ export function SpeedTierView({ data }) {
             </tr>
           </thead>
           <tbody ref={flipBodyRef}>
-            {groups.map((g, i) => (
+            {visibleGroups.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="px-3 py-8 text-center text-gray-400">
+                  {t('Ningún Pokémon coincide con los filtros.')}
+                </td>
+              </tr>
+            ) : visibleGroups.map((g, i) => (
               <tr
                 key={g.key}
                 id={rowId(g.key)}

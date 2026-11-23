@@ -5,6 +5,7 @@ import { getSpecies, localizeName } from '../lib/championsData';
 import { PokemonSprite } from '../components/PokemonSprite';
 import { Logo } from '../components/Logo';
 import { InfoTooltip } from '../components/InfoTooltip';
+import { Icon } from '../components/Icons';
 import { parseReplayId, fetchReplay, parseReplay, userInReplay, searchUserReplays } from '../lib/replay';
 import { computeStats, matchSavedTeam, computeUsage, computeMatchups, computeMoveUsageByMon, computeLeads, groupSets } from '../lib/replayStats';
 
@@ -61,6 +62,42 @@ function timeAgo(ts, lang) {
   return `${Math.floor(day / 365)}${lang === 'es' ? ' a' : 'y'}`;
 }
 
+function csvCell(v) {
+  const s = String(v ?? '');
+  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function exportReplaysCsv(matches, lang) {
+  const header = lang === 'en'
+    ? ['Date', 'Result', 'Team', 'Opponent', 'Opponent Team', 'Your Picks', 'Your Leads', 'Opp Picks', 'Turns', 'Note', 'URL']
+    : ['Fecha', 'Resultado', 'Equipo', 'Rival', 'Equipo rival', 'Tus picks', 'Tus leads', 'Sus picks', 'Turnos', 'Nota', 'URL'];
+  const rows = [header.map(csvCell).join(',')];
+  for (const m of matches) {
+    const date = m.uploadtime ? new Date(m.uploadtime * 1000).toISOString().slice(0, 10) : '';
+    const res = m.win === true ? (lang === 'en' ? 'Win' : 'Victoria') : m.win === false ? (lang === 'en' ? 'Loss' : 'Derrota') : (lang === 'en' ? 'Tie' : 'Empate');
+    rows.push([
+      date,
+      res,
+      m.teamName ?? '',
+      m.oppName ?? '',
+      (m.oppTeam ?? []).map(spName).join(' / '),
+      (m.myBrought ?? []).map(spName).join(' / '),
+      (m.myLeads ?? []).map(spName).join(' / '),
+      (m.oppBrought ?? []).map(spName).join(' / '),
+      m.turns ?? '',
+      m.note ?? '',
+      `https://replay.pokemonshowdown.com/${m.id}`,
+    ].map(csvCell).join(','));
+  }
+  const blob = new Blob(['\uFEFF' + rows.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `replays-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 const TABS = [
   { id: 'overview', label: 'Resumen' },
   { id: 'games', label: 'Partida a partida' },
@@ -79,6 +116,8 @@ export function ReplaysView(_props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [allTeams, setAllTeams] = useState(false);
+  const [dateRange, setDateRange] = useState('all'); // '7d' | '30d' | 'all'
+  const [gameQuery, setGameQuery] = useState('');
   const [tab, setTab] = useState('overview');
   const [syncing, setSyncing] = useState(null);
 
@@ -91,11 +130,16 @@ export function ReplaysView(_props) {
     });
   }, [teams, setMatches]);
 
-  const filtered = useMemo(
+  const filtered = useMemo(() => {
     // Solo partidas asociadas a un equipo (se excluyen las «sin asociar»).
-    () => (allTeams ? matches : matches.filter((m) => m.teamId === activeTeamId)).filter((m) => m.teamId),
-    [matches, allTeams, activeTeamId],
-  );
+    let list = (allTeams ? matches : matches.filter((m) => m.teamId === activeTeamId)).filter((m) => m.teamId);
+    if (dateRange !== 'all') {
+      const days = dateRange === '7d' ? 7 : 30;
+      const cutoff = Math.floor(Date.now() / 1000) - days * 86400;
+      list = list.filter((m) => (m.uploadtime ?? 0) >= cutoff);
+    }
+    return list;
+  }, [matches, allTeams, activeTeamId, dateRange]);
 
   // En modo general solo se ofrece el Resumen; las demás pestañas son por equipo.
   useEffect(() => { if (allTeams) setTab('overview'); }, [allTeams]);
@@ -122,6 +166,7 @@ export function ReplaysView(_props) {
   };
 
   const removeMatch = (id) => setMatches((prev) => prev.filter((m) => m.id !== id));
+  const updateNote = (id, note) => setMatches((prev) => prev.map((m) => (m.id === id ? { ...m, note } : m)));
   const clearAll = () => { if (confirm(t('¿Borrar todas las repeticiones guardadas?'))) setMatches([]); };
 
   // Vuelve a descargar y reparsear todas las repeticiones (refresca datos tras
@@ -139,6 +184,7 @@ export function ReplaysView(_props) {
         const rec = parseReplay(raw, u);
         const matched = matchSavedTeam(rec.myTeam, teams);
         if (matched) { rec.teamId = matched.id; rec.teamName = matched.name; }
+        if (old.note) rec.note = old.note;
         updated.push(rec);
       } catch {
         updated.push(old); // si falla, mantenemos el registro anterior
@@ -209,8 +255,9 @@ export function ReplaysView(_props) {
           <button type="button" onClick={addReplay} disabled={busy} className="btn-primary px-5 py-2.5 disabled:opacity-50">{busy ? `⏳ ${t('Cargando…')}` : `＋ ${t('Añadir')}`}</button>
         </div>
         <div className="mt-3 flex items-center gap-3 flex-wrap">
-          <button type="button" onClick={autoImport} disabled={busy} className="btn-secondary text-sm py-2 px-4 disabled:opacity-50">
-            {syncing ? `${t('Importando…')} ${syncing.done}/${syncing.total}` : `↻ ${t('Importar mis últimas partidas')}`}
+          <button type="button" onClick={autoImport} disabled={busy} className="btn-secondary text-sm py-2 px-4 disabled:opacity-50 inline-flex items-center gap-1.5">
+            <Icon name="refresh" className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+            {syncing ? `${t('Importando…')} ${syncing.done}/${syncing.total}` : t('Importar mis últimas partidas')}
           </button>
           <span className="text-xs text-gray-500 inline-flex items-center gap-1.5">
             {t('Trae automáticamente tus repeticiones públicas de Champions en Showdown.')}
@@ -240,15 +287,43 @@ export function ReplaysView(_props) {
             >
               {allTeams ? `★ ${t('Todos los equipos')}` : `☆ ${activeTeam?.name ?? t('Equipo seleccionado')}`}
             </button>
+            <div className="inline-flex items-center gap-1 rounded-lg bg-poke-dark/60 border border-poke-accent/50 p-0.5">
+              {[
+                { id: '7d', label: '7d' },
+                { id: '30d', label: '30d' },
+                { id: 'all', label: t('Todo') },
+              ].map((r) => (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => setDateRange(r.id)}
+                  className={`px-2 py-1 rounded-md text-xs font-medium transition-colors ${
+                    dateRange === r.id ? 'bg-poke-pink text-white' : 'text-gray-400 hover:text-gray-200'
+                  }`}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
             <span className="text-xs text-gray-500">{filtered.length} {t('partidas')}</span>
+            <button
+              type="button"
+              onClick={() => exportReplaysCsv(filtered, lang)}
+              disabled={filtered.length === 0}
+              className="ml-auto btn-secondary text-xs py-1.5 px-3 disabled:opacity-40 inline-flex items-center gap-1.5"
+            >
+              <Icon name="download" className="w-3.5 h-3.5" />
+              {t('Exportar CSV')}
+            </button>
             <button
               type="button"
               onClick={resyncAll}
               disabled={!!syncing}
-              className="ml-auto text-xs text-sky-400 hover:text-sky-300 disabled:opacity-50"
+              className="text-xs text-sky-400 hover:text-sky-300 disabled:opacity-50 inline-flex items-center gap-1"
               title={t('Vuelve a descargar y reparsear todas las repeticiones')}
             >
-              {syncing ? `${t('Re-sincronizando…')} ${syncing.done}/${syncing.total}` : `↻ ${t('Re-sincronizar')}`}
+              <Icon name="refresh" className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
+              {syncing ? `${t('Re-sincronizando…')} ${syncing.done}/${syncing.total}` : t('Re-sincronizar')}
             </button>
             <button type="button" onClick={clearAll} className="text-xs text-red-400 hover:text-red-300">{t('Borrar todas')}</button>
           </div>
@@ -269,10 +344,17 @@ export function ReplaysView(_props) {
           ) : (
             <div key={tab} className="page-enter">
               {tab === 'overview' && <Overview matches={filtered} lang={lang} t={t} />}
-              {tab === 'games' && <GameByGame matches={filtered} onDelete={removeMatch} lang={lang} t={t} />}
+              {tab === 'games' && <GameByGame matches={filtered} query={gameQuery} onQuery={setGameQuery} onDelete={removeMatch} onNote={updateNote} lang={lang} t={t} />}
               {tab === 'sets' && <MatchByMatch sets={groupSets(filtered)} lang={lang} t={t} />}
               {tab === 'usage' && <UsageStats rows={computeUsage(filtered)} leads={computeLeads(filtered)} total={filtered.length} lang={lang} t={t} />}
-              {tab === 'matchup' && <MatchupStats rows={computeMatchups(filtered)} lang={lang} t={t} />}
+              {tab === 'matchup' && (
+                <MatchupStats
+                  rows={computeMatchups(filtered)}
+                  onPickOpponent={(id) => { setGameQuery(spName(id)); setTab('games'); }}
+                  lang={lang}
+                  t={t}
+                />
+              )}
               {tab === 'moves' && <MoveUsage rows={computeMoveUsageByMon(filtered)} lang={lang} t={t} />}
             </div>
           )}
@@ -332,12 +414,19 @@ function MegaCell({ id, label }) {
 // ── Resumen ──────────────────────────────────────────────────────────────────
 function Overview({ matches, lang, t }) {
   const stats = useMemo(() => computeStats(matches), [matches]);
+  const turnStats = useMemo(() => {
+    const allTurns = matches.filter((m) => m.turns > 0).map((m) => m.turns);
+    const winTurns = matches.filter((m) => m.win === true && m.turns > 0).map((m) => m.turns);
+    const lossTurns = matches.filter((m) => m.win === false && m.turns > 0).map((m) => m.turns);
+    const avg = (arr) => (arr.length ? (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1) : '—');
+    return { allAvg: avg(allTurns), winAvg: avg(winTurns), lossAvg: avg(lossTurns) };
+  }, [matches]);
   return (
-    <>
-      <div className="grid gap-4 lg:grid-cols-3 items-start mb-4">
-        <div className="panel p-4 animate-fade-in-up">
+    <div className="grid gap-4 md:grid-cols-2 items-stretch">
+      <div className="panel p-4 animate-fade-in-up">
           <h3 className="font-semibold mb-3 flex items-center gap-1.5">
-            📈 {t('Resumen')}
+            <Icon name="trendingUp" className="w-4 h-4 text-poke-pink" />
+            {t('Resumen')}
             <InfoTooltip label={t('Más información')}>
               {lang === 'en'
                 ? 'Win rate is the percentage of games won out of your total analysed replays. The ring and the green/red bar show that split; the numbers below are wins, total games and losses.'
@@ -359,9 +448,59 @@ function Overview({ matches, lang, t }) {
             </div>
           </div>
         </div>
+        <div className="panel p-4 animate-fade-in-up flex flex-col" style={{ animationDelay: '40ms' }}>
+          <h3 className="font-semibold mb-3 flex items-center gap-1.5">
+            <Icon name="clock" className="w-4 h-4 text-poke-pink" />
+            {t('Turnos medios')}
+            <InfoTooltip label={t('Más información')}>
+              {lang === 'en'
+                ? 'Average number of turns per game, split between wins and losses. Helps you spot whether your team closes games fast or struggles in longer matches.'
+                : 'Número medio de turnos por partida, separado entre victorias y derrotas. Ayuda a ver si tu equipo cierra rápido o sufre cuando las partidas se alargan.'}
+            </InfoTooltip>
+          </h3>
+          <div className="grid grid-cols-3 gap-2.5 text-center flex-1">
+            <div className="bg-poke-dark/50 rounded-lg py-3 px-2 border border-poke-accent/30 flex flex-col items-center justify-center">
+              <div className="font-mono text-2xl font-bold text-green-400 leading-none">{turnStats.winAvg}</div>
+              <div className="text-[11px] uppercase text-gray-400 mt-1.5">{t('Ganadas')}</div>
+            </div>
+            <div className="bg-poke-dark/50 rounded-lg py-3 px-2 border border-poke-accent/30 flex flex-col items-center justify-center">
+              <div className="font-mono text-2xl font-bold text-gray-200 leading-none">{turnStats.allAvg}</div>
+              <div className="text-[11px] uppercase text-gray-400 mt-1.5">{t('Total')}</div>
+            </div>
+            <div className="bg-poke-dark/50 rounded-lg py-3 px-2 border border-poke-accent/30 flex flex-col items-center justify-center">
+              <div className="font-mono text-2xl font-bold text-red-400 leading-none">{turnStats.lossAvg}</div>
+              <div className="text-[11px] uppercase text-gray-400 mt-1.5">{t('Perdidas')}</div>
+            </div>
+          </div>
+        </div>
+        <MonGrid
+          title={<><Icon name="users" className="w-4 h-4 text-poke-pink" />{t('Rivales más enfrentados')}</>}
+          mons={stats.topOpponents.slice(0, 8)}
+          total={stats.total}
+          info={
+            <InfoTooltip label={t('Más información')}>
+              {lang === 'en'
+                ? 'The Pokémon that appeared most often on your opponents’ teams, with how many games they showed up in. A quick read of what the meta is bringing against you.'
+                : 'Los Pokémon que más aparecen en los equipos rivales, con el número de partidas en que salieron. Una lectura rápida de lo que el meta trae contra ti.'}
+            </InfoTooltip>
+          }
+        />
+        <MonGrid
+          title={<><Icon name="box" className="w-4 h-4 text-poke-pink" />{t('Tu bring-rate')}</>}
+          mons={stats.bring.slice(0, 8)}
+          total={stats.total}
+          info={
+            <InfoTooltip label={t('Más información')}>
+              {lang === 'en'
+                ? 'Bring-rate: how often you actually brought each of your Pokémon to Team Preview, and in what share of games. Shows which members you rely on most.'
+                : 'Bring-rate: con qué frecuencia llevaste cada uno de tus Pokémon a la vista previa, y en qué porcentaje de partidas. Muestra en qué miembros te apoyas más.'}
+            </InfoTooltip>
+          }
+        />
         <div className="panel p-4 animate-fade-in-up" style={{ animationDelay: '60ms' }}>
           <h3 className="font-semibold mb-3 flex items-center gap-1.5">
-            🧩 {t('Por equipo')}
+            <Icon name="layers" className="w-4 h-4 text-poke-pink" />
+            {t('Por equipo')}
             <InfoTooltip label={t('Más información')}>
               {lang === 'en'
                 ? 'Win rate broken down by each of your saved teams, so you can compare how they perform. Only teams matched to a replay appear here.'
@@ -382,7 +521,8 @@ function Overview({ matches, lang, t }) {
         </div>
         <div className="panel p-4 animate-fade-in-up" style={{ animationDelay: '120ms' }}>
           <h3 className="font-semibold mb-3 flex items-center gap-1.5">
-            🎯 {t('Leads más usados')}
+            <Icon name="target" className="w-4 h-4 text-poke-pink" />
+            {t('Leads más usados')}
             <InfoTooltip label={t('Más información')}>
               {lang === 'en'
                 ? 'Leads are the two Pokémon you send out first each game. This lists your most frequent lead pairs with their win rate (wins/games), so you can see which openings actually work.'
@@ -400,45 +540,32 @@ function Overview({ matches, lang, t }) {
             </div>
           )}
         </div>
-      </div>
-      <div className="grid gap-4 lg:grid-cols-2 items-start">
-        <MonGrid
-          title={`👹 ${t('Rivales más enfrentados')}`}
-          mons={stats.topOpponents}
-          total={stats.total}
-          info={
-            <InfoTooltip label={t('Más información')}>
-              {lang === 'en'
-                ? 'The Pokémon that appeared most often on your opponents’ teams, with how many games they showed up in. A quick read of what the meta is bringing against you.'
-                : 'Los Pokémon que más aparecen en los equipos rivales, con el número de partidas en que salieron. Una lectura rápida de lo que el meta trae contra ti.'}
-            </InfoTooltip>
-          }
-        />
-        <MonGrid
-          title={`📦 ${t('Tu bring-rate')}`}
-          mons={stats.bring}
-          total={stats.total}
-          info={
-            <InfoTooltip label={t('Más información')}>
-              {lang === 'en'
-                ? 'Bring-rate: how often you actually brought each of your Pokémon to Team Preview, and in what share of games. Shows which members you rely on most.'
-                : 'Bring-rate: con qué frecuencia llevaste cada uno de tus Pokémon a la vista previa, y en qué porcentaje de partidas. Muestra en qué miembros te apoyas más.'}
-            </InfoTooltip>
-          }
-        />
-      </div>
-    </>
+    </div>
   );
 }
 
 // ── Partida a partida ────────────────────────────────────────────────────────
-function GameByGame({ matches, onDelete, lang, t }) {
-  const [q, setQ] = useState('');
+function GameByGame({ matches, query: q, onQuery: setQ, onDelete, onNote, lang, t }) {
+  const [resultFilter, setResultFilter] = useState('all');
   const shown = useMemo(() => {
     const query = q.toLowerCase().trim();
-    if (!query) return matches;
-    return matches.filter((m) => m.oppTeam.some((id) => spName(id).toLowerCase().includes(query)) || m.oppName.toLowerCase().includes(query));
-  }, [matches, q]);
+    return matches.filter((m) => {
+      if (resultFilter === 'win' && m.win !== true) return false;
+      if (resultFilter === 'loss' && m.win !== false) return false;
+      if (!query) return true;
+      return (
+        m.oppTeam.some((id) => spName(id).toLowerCase().includes(query)) ||
+        m.oppName.toLowerCase().includes(query) ||
+        (m.note ?? '').toLowerCase().includes(query)
+      );
+    });
+  }, [matches, q, resultFilter]);
+
+  const RESULT_OPTS = [
+    { id: 'all', label: 'Todas' },
+    { id: 'win', label: 'Victorias' },
+    { id: 'loss', label: 'Derrotas' },
+  ];
 
   return (
     <>
@@ -446,11 +573,34 @@ function GameByGame({ matches, onDelete, lang, t }) {
         {t('Partida a partida')}
         <InfoTooltip label={t('Más información')} side="bottom">
           {lang === 'en'
-            ? 'Every analysed game, newest first: result, opponent, the full enemy team, what each side actually brought (leads ringed), Megas and turn count. Filter by an opposing Pokémon or open the original replay.'
-            : 'Todas las partidas analizadas, de más nueva a más antigua: resultado, rival, el equipo enemigo completo, lo que llevó cada lado (leads resaltados), Megas y número de turnos. Filtra por un Pokémon rival o abre la repetición original.'}
+            ? 'Every analysed game, newest first: result, opponent, the full enemy team, what each side actually brought (leads ringed), Megas, turn count and your notes. Filter by result, opposing Pokémon or note.'
+            : 'Todas las partidas analizadas, de más nueva a más antigua: resultado, rival, el equipo enemigo completo, lo que llevó cada lado (leads resaltados), Megas, número de turnos y tus notas. Filtra por resultado, Pokémon rival o nota.'}
         </InfoTooltip>
       </h3>
-      <input className="input-field mb-3" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Filtrar por Pokémon rival…')} />
+      <div className="flex flex-wrap items-center gap-2 mb-3">
+        <input
+          className="input-field flex-1 min-w-[200px]"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder={t('Filtrar por Pokémon rival o nota…')}
+        />
+        <div className="flex items-center gap-1.5">
+          {RESULT_OPTS.map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => setResultFilter(opt.id)}
+              className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                resultFilter === opt.id
+                  ? 'border-poke-pink bg-poke-pink/15 text-poke-pink'
+                  : 'border-poke-accent bg-poke-dark text-gray-300 hover:bg-poke-accent/40'
+              }`}
+            >
+              {t(opt.label)}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="space-y-3">
         {shown.map((m, i) => {
           const cls = m.win === true ? 'border-green-500/40' : m.win === false ? 'border-red-500/40' : 'border-poke-accent/30';
@@ -487,6 +637,16 @@ function GameByGame({ matches, onDelete, lang, t }) {
                   <a href={`https://replay.pokemonshowdown.com/${m.id}`} target="_blank" rel="noopener noreferrer" className="btn-secondary text-xs py-1 px-2.5">{t('Ver repetición')}</a>
                   <button type="button" onClick={() => onDelete(m.id)} className="btn-primary text-xs py-1 px-2.5">{t('Eliminar')}</button>
                 </div>
+              </div>
+              <div className="mt-2.5 pt-2 border-t border-poke-accent/20 flex items-center gap-2">
+                <span className="text-[11px] uppercase tracking-wide text-gray-500 shrink-0">{t('Nota')}</span>
+                <input
+                  type="text"
+                  value={m.note ?? ''}
+                  onChange={(e) => onNote(m.id, e.target.value)}
+                  placeholder={t('Añadir nota sobre la partida…')}
+                  className="w-full bg-transparent text-xs text-gray-200 placeholder-gray-600 focus:text-white outline-none py-0.5"
+                />
               </div>
             </div>
           );
@@ -534,7 +694,7 @@ function MatchByMatch({ sets, lang, t }) {
               <div className="flex items-center gap-3 mb-3">
                 <span className={`text-xs font-bold px-2 py-0.5 rounded ${badge}`}>{label}</span>
                 <span className="font-medium text-sm">vs {s.oppName}</span>
-                <span className="text-xs text-gray-500 ml-auto">🏆 {s.games.length} {t('partidas')}</span>
+                <span className="text-xs text-gray-500 ml-auto inline-flex items-center gap-1"><Icon name="trophy" className="w-3.5 h-3.5" />{s.games.length} {t('partidas')}</span>
               </div>
               <div className="grid lg:grid-cols-[1fr_auto] gap-4">
                 <div className="space-y-2">
@@ -588,7 +748,8 @@ function UsageStats({ rows, leads, total, lang, t }) {
     <>
       <div className="panel p-4 mb-4 overflow-x-auto animate-fade-in-up">
         <h3 className="font-semibold mb-3 flex items-center gap-1.5">
-          📊 {t('Rendimiento de tu equipo')}
+          <Icon name="barChart" className="w-4 h-4 text-poke-pink" />
+          {t('Rendimiento de tu equipo')}
           <InfoTooltip label={t('Más información')}>
             {lang === 'en'
               ? 'Per-Pokémon breakdown: how often you brought it (Usage) and its win rate, plus lead usage/win rate and Mega usage/win rate. Percentages are computed only over games where that stat applies.'
@@ -624,7 +785,7 @@ function UsageStats({ rows, leads, total, lang, t }) {
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <LeadList
-          title={`👥 ${t('Leads más comunes')}`}
+          title={<><Icon name="users" className="w-4 h-4 text-poke-pink" />{t('Leads más comunes')}</>}
           leads={common}
           t={t}
           info={
@@ -636,7 +797,7 @@ function UsageStats({ rows, leads, total, lang, t }) {
           }
         />
         <LeadList
-          title={`⭐ ${t('Mejores leads (Win %)')}`}
+          title={<><Icon name="star" className="w-4 h-4 text-poke-pink" />{t('Mejores leads (Win %)')}</>}
           leads={best}
           t={t}
           info={
@@ -674,7 +835,7 @@ function LeadList({ title, leads, t, info }) {
 }
 
 // ── Matchups ─────────────────────────────────────────────────────────────────
-function MatchupStats({ rows, lang, t }) {
+function MatchupStats({ rows, onPickOpponent, lang, t }) {
   const enough = rows.filter((r) => r.games >= 3);
   const best = [...enough].sort((a, b) => (b.wins / b.games) - (a.wins / a.games)).slice(0, 5);
   const worst = [...enough].sort((a, b) => (a.wins / a.games) - (b.wins / b.games)).slice(0, 5);
@@ -686,15 +847,16 @@ function MatchupStats({ rows, lang, t }) {
         {t('Mejores/peores requieren al menos 3 enfrentamientos.')}
         <InfoTooltip label={t('Más información')} side="bottom">
           {lang === 'en'
-            ? 'A matchup is how you fare against each opposing Pokémon: your win rate in games where that Pokémon appeared on the enemy team. Best/worst need at least 3 games to filter out noise; the other columns show the Pokémon you face most and least often.'
-            : 'Un matchup es cómo te va contra cada Pokémon rival: tu win rate en las partidas donde ese Pokémon estuvo en el equipo enemigo. Mejores/peores exigen al menos 3 partidas para evitar ruido; las otras columnas muestran los Pokémon que más y menos te enfrentas.'}
+            ? 'A matchup is how you fare against each opposing Pokémon: your win rate in games where that Pokémon appeared on the enemy team. Click any Pokémon to jump to those games.'
+            : 'Un matchup es cómo te va contra cada Pokémon rival: tu win rate en las partidas donde ese Pokémon estuvo en el equipo enemigo. Haz clic en cualquier Pokémon para ver esas partidas.'}
         </InfoTooltip>
       </p>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MatchupCol
-          title={`📈 ${t('Mejores matchups')}`}
+          title={<><Icon name="trendingUp" className="w-4 h-4 text-green-400" />{t('Mejores matchups')}</>}
           rows={best}
           delay={0}
+          onPick={onPickOpponent}
           info={
             <InfoTooltip label={t('Más información')}>
               {lang === 'en'
@@ -704,9 +866,10 @@ function MatchupStats({ rows, lang, t }) {
           }
         />
         <MatchupCol
-          title={`📉 ${t('Peores matchups')}`}
+          title={<><Icon name="trendingDown" className="w-4 h-4 text-red-400" />{t('Peores matchups')}</>}
           rows={worst}
           delay={80}
+          onPick={onPickOpponent}
           info={
             <InfoTooltip label={t('Más información')}>
               {lang === 'en'
@@ -716,9 +879,10 @@ function MatchupStats({ rows, lang, t }) {
           }
         />
         <MatchupCol
-          title={`👥 ${t('Más enfrentados')}`}
+          title={<><Icon name="users" className="w-4 h-4 text-poke-pink" />{t('Más enfrentados')}</>}
           rows={most}
           delay={160}
+          onPick={onPickOpponent}
           info={
             <InfoTooltip label={t('Más información')}>
               {lang === 'en'
@@ -728,9 +892,10 @@ function MatchupStats({ rows, lang, t }) {
           }
         />
         <MatchupCol
-          title={`👤 ${t('Menos enfrentados')}`}
+          title={<><Icon name="user" className="w-4 h-4 text-gray-400" />{t('Menos enfrentados')}</>}
           rows={least}
           delay={240}
+          onPick={onPickOpponent}
           info={
             <InfoTooltip label={t('Más información')}>
               {lang === 'en'
@@ -744,14 +909,20 @@ function MatchupStats({ rows, lang, t }) {
   );
 }
 
-function MatchupCol({ title, rows, delay = 0, info }) {
+function MatchupCol({ title, rows, delay = 0, info, onPick }) {
   return (
     <div className="panel p-4 animate-fade-in-up" style={{ animationDelay: `${delay}ms` }}>
       <h3 className="font-semibold mb-3 text-sm flex items-center gap-1.5">{title}{info}</h3>
       {rows.length === 0 ? <p className="text-xs text-gray-500 text-center py-4">—</p> : (
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           {rows.map((r, i) => { const wr = pct(r.wins, r.games); return (
-            <div key={r.id} className="flex items-center gap-2 animate-fade-in-up" style={{ animationDelay: `${delay + i * 50}ms` }}>
+            <button
+              key={r.id}
+              type="button"
+              onClick={() => onPick?.(r.id)}
+              className="w-full text-left flex items-center gap-2 animate-fade-in-up rounded-lg px-1.5 -mx-1.5 py-0.5 hover:bg-poke-accent/30 transition-colors"
+              style={{ animationDelay: `${delay + i * 50}ms` }}
+            >
               <span className="text-xs text-gray-500 w-4">#{i + 1}</span>
               <PokemonSprite speciesId={r.id} className="w-7 h-7 object-contain shrink-0" />
               <span className="text-sm truncate flex-1">{spName(r.id)}</span>
@@ -759,7 +930,7 @@ function MatchupCol({ title, rows, delay = 0, info }) {
                 <div className={`text-sm font-semibold ${wrColor(wr)}`}>{wr}%</div>
                 <div className="text-xs text-gray-500">{r.wins}/{r.games}</div>
               </div>
-            </div>
+            </button>
           ); })}
         </div>
       )}

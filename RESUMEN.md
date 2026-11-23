@@ -53,16 +53,16 @@ Cada archivo es la pantalla completa de una entrada del menú.
 
 | Archivo | Página | Qué hace |
 |---|---|---|
-| `TeamBuilder.jsx` | **Equipo** (`/`) | Editor del equipo activo: elegir Pokémon, especie, habilidad, objeto, naturaleza, movimientos y EVs (en *stat points* o EVs clásicos). Arrastrar y soltar para reordenar. Importar/exportar en formato Showdown y **Poképaste** (crear/importar). |
-| `PokedexView.jsx` | **Pokédex** (`/dex`) | Lista filtrable de todos los Pokémon legales del formato: por nombre, tipo, habilidad, movimientos y mínimos por estadística. Clic en una card abre un modal con el detalle (stats, habilidades, megaevoluciones). |
-| `SpeedTier.jsx` | **Speed Tier** (`/speed`) | Tabla de velocidades de todo el formato con tu equipo resaltado. Toggles para Tailwind, Trick Room, clima, Liviano, Choice Scarf. Las filas se reordenan con animación (FLIP) al cambiar un toggle. |
+| `TeamBuilder.jsx` | **Equipo** (`/`) | Editor del equipo activo: elegir Pokémon (con sugerencias de compañeros de Smogon), especie, habilidad, objeto, naturaleza, movimientos (con `%` de uso del meta), presets rápidos de EVs/SP y carga de build meta en 1 clic. Validación VGC en vivo, deshacer al borrar/importar, arrastrar y soltar, importar/exportar Showdown, **Poképaste** y tarjeta **PNG** estilo Team Sheet. |
+| `PokedexView.jsx` | **Pokédex** (`/dex`) | Lista filtrable de todos los Pokémon legales del formato: por nombre, tipo, habilidad, movimientos y mínimos por estadística, ordenable por número, uso en Smogon, stat o BST. Clic en una card abre el detalle completo (stats, debilidades/resistencias, habilidades con descripción, megaevoluciones con sprite/habilidad/piedra, learnset buscable y botón para añadir al equipo). |
+| `SpeedTier.jsx` | **Speed Tier** (`/speed`) | Tabla de velocidades basada en el Top X de uso en Smogon (configurable, con añadir/quitar manual) y tu equipo resaltado. Filtros de búsqueda, tipo y rango de velocidad; toggles para Tailwind, Trick Room, clima, Liviano, Choice Scarf. Las filas se reordenan con animación (FLIP) al cambiar un toggle. |
 | `BuildsView.jsx` | **Builds Meta** (`/builds`) | Sets más usados (según Smogon) para cada Pokémon de tu equipo: habilidad, objeto, naturaleza, EVs, movimientos, compañeros. Aplicable con un clic. |
 | `CoverageView.jsx` | **Cobertura** (`/coverage`) | Debilidades defensivas de tu equipo (incluye habilidades) y qué tipos golpeas supereficaz ofensivamente. |
-| `DamageCalcView.jsx` | **Calculadora** (`/damage`) | Calculadora de daño Gen 9 dobles (`@smogon/calc`): tu Pokémon contra cualquiera del formato, con clima, terreno, pantallas, gravedad, crítico, aliados debilitados, etc. |
-| `TeamAnalysisView.jsx` | **Análisis** (`/analysis`) | Dashboard del equipo: puntuación por categorías, arquetipo, roles de cada Pokémon, sinergias, amenazas del meta que tu equipo no cubre. |
-| `OptimizerView.jsx` | **Optimizador** (`/optimizer`) | Calcula los EVs mínimos para: alcanzar una velocidad objetivo, sobrevivir un ataque concreto (con habilidad del rival y golpe único/de área), u OHKO/2HKO a un objetivo. |
-| `ReplaysView.jsx` | **Repeticiones** (`/replays`) | Importa repeticiones de Pokémon Showdown (por URL o automáticamente por tu usuario) y calcula estadísticas: win rate, leads, matchups, uso de Pokémon y de movimientos. |
-| `TournamentTeamsView.jsx` | **Equipos de torneo** (`/tournament`) | Equipos reales usados en torneos (datos de VGCPastes), filtrables por jugador/evento/Pokémon/regulación. Clic abre el detalle del equipo (con movimientos, EVs si están disponibles, código de alquiler). Botón para importarlo al equipo activo si está vacío. |
+| `DamageCalcView.jsx` | **Calculadora** (`/damage`) | Calculadora de daño Gen 9 dobles (`@smogon/calc`): tu Pokémon contra cualquiera del formato, con clima, terreno, pantallas, gravedad, crítico, aliados debilitados, barra arrastrable de HP actual, selector de golpes multigolpe, ajuste temporal de SP (con guardado al equipo) y hoja de cálculos guardados exportable a texto, PNG y PDF/imprimir. |
+| `TeamAnalysisView.jsx` | **Análisis** (`/analysis`) | Dashboard del equipo: puntuación por categorías, arquetipo, roles de cada Pokémon, balance físico/especial y conteo de Protección, sinergias/anti-sinergias VGC dobles y amenazas del meta que tu equipo no cubre. |
+| `OptimizerView.jsx` | **Optimizador** (`/optimizer`) | Diseño *Cara a cara (Versus)* en 3 pestañas (Velocidad con Unburden y barras comparativas, Defensa con barra de vida restante, Ataque con botones de movimiento y barra de daño), condiciones de campo unificadas (clima, terreno, pantallas, Velo Aurora, Refuerzo), sugerencia automática de naturaleza, botón «Aplicar al equipo» y **Combinador de objetivos** en 66 SP con asignación de puntos libres. |
+| `ReplaysView.jsx` | **Repeticiones** (`/replays`) | Importa repeticiones de Pokémon Showdown (por URL o automáticamente por tu usuario) y calcula estadísticas: win rate, turnos medios, leads, matchups (clicables), uso de Pokémon/movimientos, notas editables por partida, filtros por resultado y rango de fechas (7d/30d/Todo) y exportación a CSV. |
+| `TournamentTeamsView.jsx` | **Equipos de torneo** (`/tournament`) | Equipos reales usados en torneos (datos de VGCPastes), filtrables por jugador/evento/core de varios Pokémon/regulación/código de alquiler y ordenables por fecha o puesto. Clic abre el detalle completo (objeto, habilidad, movimientos, EVs, código de alquiler y copiar Showdown) e importa automáticamente creando un equipo nuevo si el activo ya está ocupado. |
 
 ---
 
@@ -81,6 +81,7 @@ Cada archivo es la pantalla completa de una entrada del menú.
 | `Modal.jsx` | Ventana modal genérica (fondo oscurecido, cierre con Escape o clic fuera). La usan el detalle de la Pokédex, los equipos de torneo, crear/renombrar/eliminar equipo, etc. |
 | `Toast.jsx` | Aviso flotante que aparece abajo a la derecha y se autooculta. |
 | `InfoTooltip.jsx` | Icono (i) que muestra un texto explicativo al hacer hover o al recibir foco por teclado (accesible, tema oscuro, respeta `prefers-reduced-motion`). |
+| `Icons.jsx` | Biblioteca de iconos SVG monocromos de trazo fino (`1.75px`) reutilizados en Optimizador, Análisis y Repeticiones. |
 | `AccountMenu.jsx` | Menú de cuenta: login, registro, cerrar sesión, subir/bajar equipos y repeticiones a la nube. |
 | `Logo.jsx` | El logo SVG de la app (una Poké Ball estilizada). |
 
@@ -107,6 +108,8 @@ Aquí vive el "cerebro" de la app: cálculos y utilidades, sin JSX.
 | `replay.js` | Parseo de una repetición de Showdown (log de batalla) a un registro resumido: equipos, leads, movimientos usados, ganador, mega/tera, etc. |
 | `replayStats.js` | A partir de varios registros de partida, calcula agregados: win rate por equipo, uso de Pokémon, matchups contra rivales, leads más usados, uso de movimientos. |
 | `useFlip.js` | Hook de animación **FLIP**: cuando una lista cambia de orden, los elementos que permanecen se deslizan a su nueva posición en vez de saltar (usado en Pokédex, Speed Tier, Equipos de torneo). |
+| `teamSheetPng.js` | Genera y descarga en cliente (Canvas 2D) una imagen PNG estilo *Team Sheet* del equipo activo (modo Completo o Lista abierta). |
+| `calcSheetExport.js` | Exporta los cálculos guardados de la Calculadora de Daño como texto plano, imagen PNG (Canvas 2D) o vista lista para imprimir / guardar como PDF. |
 
 ---
 

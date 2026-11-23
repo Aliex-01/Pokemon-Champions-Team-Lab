@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth, authErrorMessage } from '../lib/auth';
 import { useLang } from '../lib/i18n';
 import { Modal } from './Modal';
+import { Icon } from './Icons';
 
 export function AccountMenu() {
   const { user, loading, login, register, logout, pushTeams, pullTeams } = useAuth();
@@ -60,8 +61,8 @@ export function AccountMenu() {
             {user.username && <p className="text-xs text-gray-500 -mt-2">{user.email}</p>}
             <p className="text-xs text-gray-400">{t('Guarda tus equipos y repeticiones en la nube para tenerlos en cualquier dispositivo.')}</p>
             <div className="grid grid-cols-2 gap-2">
-              <button type="button" onClick={doPush} disabled={busy} className="btn-primary py-2 disabled:opacity-50">☁⬆ {t('Guardar en la nube')}</button>
-              <button type="button" onClick={doPull} disabled={busy} className="btn-secondary py-2 disabled:opacity-50">☁⬇ {t('Cargar de la nube')}</button>
+              <button type="button" onClick={doPush} disabled={busy} className="btn-primary py-2 disabled:opacity-50 inline-flex items-center justify-center gap-1.5"><Icon name="cloudUp" className="w-4 h-4" />{t('Guardar en la nube')}</button>
+              <button type="button" onClick={doPull} disabled={busy} className="btn-secondary py-2 disabled:opacity-50 inline-flex items-center justify-center gap-1.5"><Icon name="cloudDown" className="w-4 h-4" />{t('Cargar de la nube')}</button>
             </div>
             {note && <p className="text-sm text-green-400">{note}</p>}
             {error && <p className="text-sm text-red-400">{error}</p>}

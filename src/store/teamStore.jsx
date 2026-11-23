@@ -12,6 +12,7 @@ function loadTeams() {
       const teams = JSON.parse(raw);
       return teams.map((team) => ({
         ...team,
+        tags: Array.isArray(team.tags) ? team.tags : [],
         pokemon: team.pokemon.map((p) => ({
           ...p,
           level: 50,
@@ -60,6 +61,40 @@ export function TeamProvider({ children }) {
     setTeams((prev) =>
       prev.map((t) => (t.id === id ? { ...t, name, updatedAt: new Date().toISOString() } : t))
     );
+  }, []);
+
+  const setTeamTags = useCallback((id, tags) => {
+    const clean = [...new Set(tags.map((x) => x.trim()).filter(Boolean))];
+    setTeams((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, tags: clean, updatedAt: new Date().toISOString() } : t))
+    );
+  }, []);
+
+  const duplicateTeam = useCallback((id) => {
+    let created = null;
+    setTeams((prev) => {
+      const src = prev.find((t) => t.id === id);
+      if (!src) return prev;
+      const now = new Date().toISOString();
+      created = {
+        ...src,
+        id: crypto.randomUUID(),
+        name: `${src.name} (copia)`,
+        tags: [...(src.tags ?? [])],
+        pokemon: src.pokemon.map((p, i) => ({
+          ...p,
+          slotId: `slot-${i}`,
+          evs: { ...p.evs },
+          ivs: { ...p.ivs },
+          moves: [...p.moves],
+        })),
+        createdAt: now,
+        updatedAt: now,
+      };
+      return [...prev, created];
+    });
+    if (created) setActiveTeamId(created.id);
+    return created;
   }, []);
 
   const updatePokemon = useCallback((slotIndex, updates) => {
@@ -115,6 +150,8 @@ export function TeamProvider({ children }) {
         createTeam,
         deleteTeam,
         renameTeam,
+        setTeamTags,
+        duplicateTeam,
         updatePokemon,
         setActiveTeamPokemon,
         importTeam,

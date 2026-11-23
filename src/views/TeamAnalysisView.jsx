@@ -5,11 +5,12 @@ import { getTypeEffectiveness, TYPE_NAMES } from '../lib/typeChart';
 import { loadMetaBuilds } from '../lib/metaBuilds';
 import { PokemonSprite } from '../components/PokemonSprite';
 import { InfoTooltip } from '../components/InfoTooltip';
+import { Icon } from '../components/Icons';
 import { useLang } from '../lib/i18n';
 
-// Habilidades que dan inmunidad / resistencia (igual que en Cobertura).
+// Habilidades que dan inmunidad / resistencia / debilidad extra (igual que en Cobertura).
 const ABILITY_IMMUNE = {
-  Levitate: 'Ground', 'Earth Eater': 'Ground',
+  Levitate: 'Ground', 'Earth Eater': 'Ground', Eelevate: 'Ground',
   'Water Absorb': 'Water', 'Storm Drain': 'Water', 'Dry Skin': 'Water',
   'Volt Absorb': 'Electric', 'Lightning Rod': 'Electric', 'Motor Drive': 'Electric',
   'Flash Fire': 'Fire', 'Well-Baked Body': 'Fire', 'Sap Sipper': 'Grass',
@@ -21,7 +22,33 @@ function applyAbility(mult, attackType, ability) {
   if (!ability) return mult;
   if (ABILITY_IMMUNE[ability] === attackType) return 0;
   if (ABILITY_RESIST[ability]?.includes(attackType)) return mult * 0.5;
+  if (ability === 'Fluffy' && attackType === 'Fire') return mult * 2;
+  if (ability === 'Dry Skin' && attackType === 'Fire') return mult * 1.25;
   return mult;
+}
+
+// Efectividad ofensiva de un movimiento concreto (incluye -ate, Freeze-Dry, Flying Press y Thousand Arrows).
+function moveEffOn(moveId, md, ability, defTypes, tc) {
+  if (!md || md.category === 'Status') return 0;
+  if (moveId === 'freezedry') {
+    let mult = 1;
+    for (const dt of defTypes) {
+      mult *= dt === 'Water' ? 2 : getTypeEffectiveness('Ice', [dt], tc);
+    }
+    return mult;
+  }
+  if (moveId === 'flyingpress') {
+    return getTypeEffectiveness('Fighting', defTypes, tc) * getTypeEffectiveness('Flying', defTypes, tc);
+  }
+  if (moveId === 'thousandarrows') {
+    let mult = 1;
+    for (const dt of defTypes) {
+      mult *= dt === 'Flying' ? 1 : getTypeEffectiveness('Ground', [dt], tc);
+    }
+    return mult;
+  }
+  const realType = abilityMoveType(md.type, ability);
+  return getTypeEffectiveness(realType, defTypes, tc);
 }
 
 // Conjuntos de movimientos por utilidad (ids de Showdown).
@@ -201,9 +228,9 @@ export function TeamAnalysisView({ data }) {
       .filter(({ cells }) => cells.length > 0 && !cells.some((c) => c < 1))
       .map(({ type }) => type);
 
-    // Huecos ofensivos: tipos a los que nadie pega supereficaz.
+    // Huecos ofensivos: tipos a los que nadie pega supereficaz (incluye Freeze-Dry, Flying Press, Thousand Arrows).
     const offGaps = TYPE_NAMES.filter((type) =>
-      !mons.some((m) => m.moveTypes.length && Math.max(...m.moveTypes.map((mt) => getTypeEffectiveness(mt, [type], tc))) > 1));
+      !mons.some((m) => m.moveIds.some((id) => moveEffOn(id, data.moveData?.[id], m.ability, [type], tc) > 1)));
 
     const withMove = (s) => mons.filter((m) => m.has(s));
     const tailwind = withMove(SET.tailwind);
@@ -305,17 +332,17 @@ export function TeamAnalysisView({ data }) {
     // para Clima/Terreno).
     const archScores = [];
     if (trickRoom.length)
-      archScores.push({ key: 'Trick Room', icon: '⧗',
+      archScores.push({ key: 'Trick Room', icon: '',
         score: 12 * trickRoom.length + 5 * slowMons.length - 0.2 * Math.max(0, avgSpe - 60) });
     if (tailwind.length)
-      archScores.push({ key: 'Tailwind', icon: '≋',
+      archScores.push({ key: 'Tailwind', icon: '',
         score: 12 * tailwind.length + 4 * fastMons.length + 0.15 * Math.max(0, avgSpe - 70) });
     if (wtSetters)
-      archScores.push({ key: 'Clima / Terreno', icon: '☀',
+      archScores.push({ key: 'Clima / Terreno', icon: '',
         score: 9 * wtSetters + 6 * wtAbusers });
-    archScores.push({ key: 'Hiperofensivo', icon: '⚔',
+    archScores.push({ key: 'Hiperofensivo', icon: '',
       score: (avgSpe >= 95 ? 10 : 0) + 4 * fastMons.length + 3 * scarf.length + 3 * priority.length - 5 * slowMons.length });
-    archScores.push({ key: 'Equilibrado', icon: '🛡', score: 9 });
+    archScores.push({ key: 'Equilibrado', icon: '', score: 9 });
 
     archScores.sort((a, b) => b.score - a.score);
     const archetype = { key: archScores[0].key, icon: archScores[0].icon };
@@ -347,13 +374,63 @@ export function TeamAnalysisView({ data }) {
       if (tr) activeTerrains.add(tr);
       for (const id of m.moveIds) if (TERRAIN_BY_MOVE[id]) activeTerrains.add(TERRAIN_BY_MOVE[id]);
     }
-    if (activeTerrains.has('psychic') && priority.length === 0) {
-      // informativo: el terreno psíquico bloquea prioridad rival
+    if (activeTerrains.has('psychic')) {
+      synergies.push(`${t('Terreno Psíquico')} (${t('bloquea prioridad rival')})`);
+      if (priority.length > 0) {
+        antiSynergies.push(`${t('Terreno Psíquico bloquea tu propia prioridad contra objetivos en tierra:')} ${priority.map((m) => m.name).join(', ')}`);
+      }
     }
-    if (activeTerrains.has('psychic')) synergies.push(`${t('Terreno Psíquico')} (${t('bloquea prioridad rival')})`);
     if (activeTerrains.has('electric')) {
       const quark = mons.filter((m) => m.ability === 'Quark Drive');
       if (quark.length) synergies.push(`${t('Terreno Eléctrico')} + ${quark.map((q) => q.name).join(', ')} (Quark Drive)`);
+    }
+    if (activeTerrains.has('grassy')) {
+      const gliders = mons.filter((m) => m.moveIds.includes('grassyglide'));
+      if (gliders.length) synergies.push(`${t('Terreno Hierba')} + Grassy Glide (${gliders.map((g) => g.name).join(', ')})`);
+    }
+    // Semillas de terreno (+ Unburden si aplica).
+    const SEED_BY_TERRAIN = {
+      electric: 'Electric Seed', grassy: 'Grassy Seed', psychic: 'Psychic Seed', misty: 'Misty Seed',
+    };
+    const TERRAIN_LABEL = { electric: 'Terreno Eléctrico', grassy: 'Terreno Hierba', psychic: 'Terreno Psíquico', misty: 'Terreno Niebla' };
+    for (const tr of activeTerrains) {
+      const seed = SEED_BY_TERRAIN[tr];
+      const holders = mons.filter((m) => m.p.item === seed);
+      if (holders.length) {
+        const unb = holders.some((h) => h.ability === 'Unburden');
+        synergies.push(`${t(TERRAIN_LABEL[tr])} + ${seed} (${holders.map((h) => h.name).join(', ')}${unb ? ' · Unburden' : ''})`);
+      }
+    }
+    // Ataques de área con aliado inmune (Disquake, Surf + Absorbe Agua, etc.).
+    const eqUsers = mons.filter((m) => m.moveIds.includes('earthquake') || m.moveIds.includes('bulldoze'));
+    if (eqUsers.length) {
+      const groundImmune = mons.filter((m) => effOn('Ground', m) === 0 && !eqUsers.every((u) => u === m));
+      if (groundImmune.length) {
+        synergies.push(`Earthquake (${eqUsers.map((m) => m.name).join(', ')}) + ${t('inmune a Tierra')} (${groundImmune.map((m) => m.name).join(', ')})`);
+      }
+    }
+    const disUsers = mons.filter((m) => m.moveIds.includes('discharge'));
+    if (disUsers.length) {
+      const elecImmune = mons.filter((m) => effOn('Electric', m) === 0 && !disUsers.every((u) => u === m));
+      if (elecImmune.length) {
+        synergies.push(`Discharge (${disUsers.map((m) => m.name).join(', ')}) + ${t('inmune a Eléctrico')} (${elecImmune.map((m) => m.name).join(', ')})`);
+      }
+    }
+    const surfUsers = mons.filter((m) => m.moveIds.includes('surf'));
+    if (surfUsers.length) {
+      const waterImmune = mons.filter((m) => effOn('Water', m) === 0 && !surfUsers.every((u) => u === m));
+      if (waterImmune.length) {
+        synergies.push(`Surf (${surfUsers.map((m) => m.name).join(', ')}) + ${t('inmune a Agua')} (${waterImmune.map((m) => m.name).join(', ')})`);
+      }
+    }
+    // Climas que debilitan ataques propios (Sol vs Agua / Lluvia vs Fuego).
+    if (activeWeathers.has('sun')) {
+      const waterAtks = mons.filter((m) => m.moveTypes.includes('Water'));
+      if (waterAtks.length) antiSynergies.push(`${t('El Sol reduce ×0,5 tus ataques de Agua:')} ${waterAtks.map((m) => m.name).join(', ')}`);
+    }
+    if (activeWeathers.has('rain')) {
+      const fireAtks = mons.filter((m) => m.moveTypes.includes('Fire'));
+      if (fireAtks.length) antiSynergies.push(`${t('La Lluvia reduce ×0,5 tus ataques de Fuego:')} ${fireAtks.map((m) => m.name).join(', ')}`);
     }
     if (activeTerrains.size >= 2) antiSynergies.push(`${t('Dos terrenos distintos se anulan entre sí.')}`);
     if (intimidate.length >= 2) synergies.push(`${t('Intimidación')} ×${intimidate.length} (${t('presión sobre el ataque rival')})`);
@@ -393,7 +470,12 @@ export function TeamAnalysisView({ data }) {
     const scores = { speed: speedScore, offense: offenseScore, defense: defenseScore, utility: utilityScore };
     const total = speedScore + offenseScore + defenseScore + utilityScore;
 
-    return { mons, weakByType, unresisted, offGaps, tailwind, trickRoom, speedCtrl, redirection, fakeOut, recovery, priority, protectArea, allySupport, weatherSetters, terrainSetters, intimidate, scarf, roles, warnings, archetype, archetypeSecondary, synergies, antiSynergies, scores, total, avgSpe };
+    const physOnly = mons.filter((m) => m.hasPhysical && !m.hasSpecial).length;
+    const specOnly = mons.filter((m) => m.hasSpecial && !m.hasPhysical).length;
+    const mixedCount = mons.filter((m) => m.hasPhysical && m.hasSpecial).length;
+    const attackBalance = { physOnly, specOnly, mixedCount };
+
+    return { mons, weakByType, unresisted, offGaps, tailwind, trickRoom, speedCtrl, redirection, fakeOut, recovery, priority, protectArea, allySupport, protect, weatherSetters, terrainSetters, intimidate, scarf, roles, warnings, archetype, archetypeSecondary, synergies, antiSynergies, scores, total, avgSpe, attackBalance };
   }, [activeTeam, data, tc, t]);
 
   // ---- Amenazas del meta (#1) ----
@@ -409,13 +491,13 @@ export function TeamAnalysisView({ data }) {
       if (!sp) continue;
       const ttypes = sp.types;
       // ¿Alguien lo golpea supereficaz?
-      const weHit = mons.some((m) => m.moveTypes.some((mt) => getTypeEffectiveness(mt, ttypes, tc) > 1));
+      const weHit = mons.some((m) => m.moveIds.some((mid) => moveEffOn(mid, data.moveData?.[mid], m.ability, ttypes, tc) > 1));
       // ¿Alguien resiste todos sus STAB?
       const weWall = mons.some((m) => ttypes.every((at) => applyAbility(getTypeEffectiveness(at, m.sp.types, tc), at, m.ability) <= 0.5));
       if (!weHit && !weWall) out.push({ id: sp.id, name: sp.name, usage: build.usage, types: ttypes });
     }
     return out.slice(0, 12);
-  }, [meta, analysis.mons, tc]);
+  }, [meta, analysis.mons, data, tc]);
 
   if (analysis.mons.length === 0) {
     return (
@@ -501,7 +583,7 @@ export function TeamAnalysisView({ data }) {
         {/* ── Resumen: puntuación + avisos ── */}
         {/* Puntuación por categorías (#3) */}
         <div className="panel p-4 animate-fade-in-up">
-          <h3 className="font-semibold mb-3 inline-flex items-center gap-1.5">📊 {t('Puntuación por categoría')}
+          <h3 className="font-semibold mb-3 inline-flex items-center gap-1.5"><Icon name="barChart" className="w-4 h-4 text-poke-pink" />{t('Puntuación por categoría')}
             <InfoTooltip label={t('Más información')} side="bottom">
               {lang === 'en'
                 ? 'Category score: your team rated out of 25 in each of Speed (speed control + priority), Offensive coverage (types you hit super-effectively), Defensive solidity (shared weaknesses and unresisted types) and Utility (Fake Out, redirection, recovery, screens…). They add up to the /100 total.'
@@ -531,7 +613,7 @@ export function TeamAnalysisView({ data }) {
 
         {/* Avisos */}
         <div className="panel p-4 animate-fade-in-up" style={{ animationDelay: '40ms' }}>
-          <h3 className="font-semibold mb-2 text-poke-pink inline-flex items-center gap-1.5">⚠ {t('Avisos')}
+          <h3 className="font-semibold mb-2 text-poke-pink inline-flex items-center gap-1.5"><Icon name="alert" className="w-4 h-4" />{t('Avisos')}
             <InfoTooltip label={t('Más información')} side="bottom">
               {lang === 'en'
                 ? 'Warnings: automatic checks that flag common gaps — no speed control, no priority, no redirection/area protection, no Fake Out, shared weaknesses, missing a physical or special attacker, no Protect, too many slow mons without Trick Room, or repeated items.'
@@ -539,7 +621,7 @@ export function TeamAnalysisView({ data }) {
             </InfoTooltip>
           </h3>
           {analysis.warnings.length === 0 ? (
-            <p className="text-sm text-green-400">{t('Sin huecos evidentes. ¡Buen equipo!')} 🎉</p>
+            <p className="text-sm text-green-400">{t('Sin huecos evidentes. ¡Buen equipo!')}</p>
           ) : (
             <ul className="space-y-1 text-sm">
               {analysis.warnings.map((w, i) => (
@@ -553,7 +635,7 @@ export function TeamAnalysisView({ data }) {
         {/* Roles */}
         <div className="panel p-4 lg:col-span-2 animate-fade-in-up" style={{ animationDelay: '80ms' }}>
           <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-            <h3 className="font-semibold inline-flex items-center gap-1.5">🧩 {t('Roles')}
+            <h3 className="font-semibold inline-flex items-center gap-1.5"><Icon name="grid" className="w-4 h-4 text-poke-pink" />{t('Roles')}
               <InfoTooltip label={t('Más información')}>
                 {lang === 'en'
                   ? 'Roles: labels for what each Pokémon does, grouped by color — Offense, Defense, Speed and Support. They are inferred from base stats, EV investment, item, ability and moves (e.g. Physical, Setup, Wall, Fake Out, Redirection, Pivot).'
@@ -592,7 +674,7 @@ export function TeamAnalysisView({ data }) {
         {/* ── Análisis de tipos y utilidad ── */}
         {/* Cobertura resumida */}
         <div className="panel p-4 lg:col-span-2 animate-fade-in-up" style={{ animationDelay: '120ms' }}>
-          <h3 className="font-semibold mb-3 inline-flex items-center gap-1.5">🛡️ {t('Cobertura de Tipos')}
+          <h3 className="font-semibold mb-3 inline-flex items-center gap-1.5"><Icon name="shield" className="w-4 h-4 text-poke-pink" />{t('Cobertura de Tipos')}
             <InfoTooltip label={t('Más información')}>
               {lang === 'en'
                 ? 'Type coverage: shared weaknesses (attacking types that hit 2+ of your Pokémon super-effectively), types nobody on the team resists or is immune to, and offensive gaps (types no move of yours hits super-effectively). Hover a type to highlight who is weak to it.'
@@ -612,7 +694,7 @@ export function TeamAnalysisView({ data }) {
             <div>
               <div className="text-gray-400 mb-1.5">{t('Tipos que nadie resiste:')}</div>
               <div className="flex flex-wrap gap-1.5">
-                {analysis.unresisted.length === 0 ? <span className="text-green-400 text-xs">{t('Ninguno')} 🎉</span> :
+                {analysis.unresisted.length === 0 ? <span className="text-green-400 text-xs">{t('Ninguno')}</span> :
                   analysis.unresisted.map((type, i) => (
                     <span key={type} onMouseEnter={() => setHoverType(type)} onMouseLeave={() => setHoverType(null)} className={`pop-in cursor-help type-${type.toLowerCase()} px-2 py-0.5 rounded text-xs font-medium opacity-80`} style={{ animationDelay: `${i * 40}ms` }}>{type}</span>
                   ))}
@@ -621,7 +703,7 @@ export function TeamAnalysisView({ data }) {
             <div>
               <div className="text-gray-400 mb-1.5">{t('Huecos ofensivos:')}</div>
               <div className="flex flex-wrap gap-1.5">
-                {analysis.offGaps.length === 0 ? <span className="text-green-400 text-xs">{t('Ninguno')} 🎉</span> :
+                {analysis.offGaps.length === 0 ? <span className="text-green-400 text-xs">{t('Ninguno')}</span> :
                   analysis.offGaps.map((type, i) => (
                     <span key={type} className={`pop-in type-${type.toLowerCase()} px-2 py-0.5 rounded text-xs font-medium opacity-80`} style={{ animationDelay: `${i * 40}ms` }}>{type}</span>
                   ))}
@@ -632,13 +714,61 @@ export function TeamAnalysisView({ data }) {
 
         {/* Utilidad */}
         <div className="panel p-4 lg:col-span-2 animate-fade-in-up" style={{ animationDelay: '160ms' }}>
-          <h3 className="font-semibold mb-2 inline-flex items-center gap-1.5">🔧 {t('Utilidad y Control')}
+          <h3 className="font-semibold mb-3 inline-flex items-center gap-1.5"><Icon name="sliders" className="w-4 h-4 text-poke-pink" />{t('Utilidad y Control')}
             <InfoTooltip label={t('Más información')}>
               {lang === 'en'
-                ? 'Utility and control: which Pokémon provide each key doubles tool — Fake Out, redirection, area protection, Intimidate, ally support, Tailwind, Trick Room, speed lowering, weather and terrain. A dash means nobody on the team provides it.'
-                : 'Utilidad y control: qué Pokémon aportan cada herramienta clave en dobles — Fake Out, redirección, protección de área, Intimidación, apoyo a aliado, Tailwind, Trick Room, ralentizar, clima y terreno. Un guion significa que nadie del equipo lo aporta.'}
+                ? 'Utility and control: physical/special balance, Protect count, and which Pokémon provide each key doubles tool — Fake Out, redirection, area protection, Intimidate, ally support, Tailwind, Trick Room, speed lowering, weather and terrain.'
+                : 'Utilidad y control: balance físico/especial, conteo de Protección y qué Pokémon aportan cada herramienta clave en dobles — Fake Out, redirección, protección de área, Intimidación, apoyo a aliado, Tailwind, Trick Room, ralentizar, clima y terreno.'}
             </InfoTooltip>
           </h3>
+
+          {/* Balance Físico / Especial + Protección */}
+          {(() => {
+            const { physOnly, specOnly, mixedCount } = analysis.attackBalance;
+            const totalAtk = physOnly + specOnly + mixedCount;
+            const physPct = totalAtk ? (physOnly / totalAtk) * 100 : 0;
+            const mixedPct = totalAtk ? (mixedCount / totalAtk) * 100 : 0;
+            const specPct = totalAtk ? (specOnly / totalAtk) * 100 : 0;
+            return (
+              <div className="grid sm:grid-cols-2 gap-3 mb-3 pb-3 border-b border-poke-accent/30">
+                <div className="bg-poke-dark/40 rounded-lg px-3 py-2 border border-poke-accent/30">
+                  <div className="flex items-center justify-between text-xs mb-1.5">
+                    <span className="text-gray-400 uppercase font-semibold">{t('Balance Físico / Especial')}</span>
+                    <span className="font-mono text-[11px] text-gray-300">
+                      <span className="text-orange-300">{physOnly} {t('Fís.')}</span>
+                      {mixedCount > 0 && <> · <span className="text-purple-300">{mixedCount} {t('Mix.')}</span></>}
+                      {' · '}
+                      <span className="text-sky-300">{specOnly} {t('Esp.')}</span>
+                    </span>
+                  </div>
+                  <div className="flex h-2 rounded-full overflow-hidden bg-black/40">
+                    <div className="bg-orange-500/80 transition-[width] duration-300" style={{ width: `${physPct}%` }} />
+                    <div className="bg-purple-500/80 transition-[width] duration-300" style={{ width: `${mixedPct}%` }} />
+                    <div className="bg-sky-500/80 transition-[width] duration-300" style={{ width: `${specPct}%` }} />
+                  </div>
+                </div>
+
+                <div className="bg-poke-dark/40 rounded-lg px-3 py-2 border border-poke-accent/30 flex items-center justify-between gap-2">
+                  <div className="shrink-0">
+                    <div className="text-xs text-gray-400 uppercase font-semibold">{t('Protección')}</div>
+                    <div className={`font-mono text-sm font-bold ${analysis.protect.length >= 3 ? 'text-green-400' : analysis.protect.length >= 1 ? 'text-amber-300' : 'text-red-400'}`}>
+                      {analysis.protect.length} / {analysis.mons.length}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap justify-end gap-1">
+                    {analysis.protect.length === 0 ? (
+                      <span className="text-xs text-red-400/80">—</span>
+                    ) : (
+                      analysis.protect.map((m, i) => (
+                        <PokemonSprite key={i} speciesId={m.p.speciesId} className="w-7 h-7 object-contain" />
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           <div className="grid sm:grid-cols-2 gap-x-6">
             <div>
               <UtilRow label={t('Fake Out')} mons={analysis.fakeOut} />
@@ -660,7 +790,7 @@ export function TeamAnalysisView({ data }) {
         {/* ── Sinergias y contexto del meta ── */}
         {/* Sinergias (#6) */}
         <div className="panel p-4 lg:col-span-2 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
-          <h3 className="font-semibold mb-2 inline-flex items-center gap-1.5">✨ {t('Sinergias')}
+          <h3 className="font-semibold mb-2 inline-flex items-center gap-1.5"><Icon name="sparkles" className="w-4 h-4 text-poke-pink" />{t('Sinergias')}
             <InfoTooltip label={t('Más información')}>
               {lang === 'en'
                 ? 'Synergies: ability and move combinations that reinforce each other (weather + abusers, terrains, multiple Intimidate, redirection protecting your frailer mons). Anti-synergies flag things that cancel out, like two different weathers or terrains.'
@@ -683,7 +813,7 @@ export function TeamAnalysisView({ data }) {
 
         {/* Amenazas del meta (#1) */}
         <div className="panel p-4 lg:col-span-2 animate-fade-in-up" style={{ animationDelay: '240ms' }}>
-          <h3 className="font-semibold mb-1 inline-flex items-center gap-1.5">🎯 {t('Amenazas del meta')}
+          <h3 className="font-semibold mb-1 inline-flex items-center gap-1.5"><Icon name="target" className="w-4 h-4 text-poke-pink" />{t('Amenazas del meta')}
             <InfoTooltip label={t('Más información')}>
               {lang === 'en'
                 ? 'Uncovered meta threats: the most-used Pokémon (from Smogon usage stats) that your team neither hits super-effectively nor walls (nobody resists all their STAB). They are the matchups you should plan an answer for.'
@@ -708,7 +838,7 @@ export function TeamAnalysisView({ data }) {
               ))}
             </div>
           ) : threats.length === 0 ? (
-            <p className="text-sm text-green-400">{t('Tu equipo tiene respuesta para las amenazas más usadas. 🎉')}</p>
+            <p className="text-sm text-green-400">{t('Tu equipo tiene respuesta para las amenazas más usadas.')}</p>
           ) : (
             <div className="flex flex-wrap gap-2">
               {threats.map((th, i) => (

@@ -7,7 +7,19 @@ export function Modal({ open, onClose, title, children, widthClass = 'max-w-sm' 
     if (!open) return;
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
+
+    // Bloquea el scroll del fondo mientras el modal está abierto (sin salto horizontal).
+    const prevOverflow = document.body.style.overflow;
+    const prevPaddingRight = document.body.style.paddingRight;
+    const sbw = window.innerWidth - document.documentElement.clientWidth;
+    document.body.style.overflow = 'hidden';
+    if (sbw > 0) document.body.style.paddingRight = `${sbw}px`;
+
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+      document.body.style.paddingRight = prevPaddingRight;
+    };
   }, [open, onClose]);
 
   if (!open) return null;
@@ -20,7 +32,7 @@ export function Modal({ open, onClose, title, children, widthClass = 'max-w-sm' 
       onMouseDown={onClose}
     >
       <div
-        className={`panel modal-pop w-full ${widthClass} p-5 shadow-2xl max-h-[85vh] overflow-y-auto`}
+        className={`panel modal-pop w-full ${widthClass} p-5 shadow-2xl max-h-[85vh] overflow-y-auto overscroll-contain`}
         onMouseDown={(e) => e.stopPropagation()}
       >
         <h3 className="text-lg font-bold text-poke-pink mb-4">{title}</h3>

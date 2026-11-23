@@ -171,8 +171,21 @@ for (const sp of speciesList) {
   }
 }
 
+const abilityDesc = {};
+for (const ab of dex.abilities.all()) {
+  if (allAbilities.has(ab.name)) {
+    const d = ab.shortDesc || ab.desc || '';
+    if (d) abilityDesc[ab.name.toLowerCase().replace(/[^a-z0-9]/g, '')] = d;
+  }
+}
+
+const itemDesc = {};
 for (const item of dex.items.all()) {
-  if (!item.isNonstandard) items.add(item.name);
+  if (!item.isNonstandard) {
+    items.add(item.name);
+    const d = item.shortDesc || item.desc || '';
+    if (d) itemDesc[item.name.toLowerCase().replace(/[^a-z0-9]/g, '')] = d;
+  }
 }
 
 // Spritenums de Showdown para los iconos de objeto (incluye piedras nuevas de Z-A
@@ -235,9 +248,47 @@ async function fetchCsvRows(file) {
   });
 }
 
+// Parser CSV que soporta saltos de línea dentro de comillas (p. ej. flavor_text).
+function parseCsvWithQuotes(txt) {
+  const rows = [];
+  let row = [], cur = '', q = false;
+  for (let i = 0; i < txt.length; i++) {
+    const c = txt[i];
+    if (q) {
+      if (c === '"' && txt[i + 1] === '"') { cur += '"'; i++; }
+      else if (c === '"') q = false;
+      else cur += c;
+    } else if (c === '"') {
+      q = true;
+    } else if (c === ',') {
+      row.push(cur); cur = '';
+    } else if (c === '\n' || c === '\r') {
+      if (c === '\r' && txt[i + 1] === '\n') i++;
+      row.push(cur); cur = '';
+      if (row.length > 1 || row[0] !== '') rows.push(row);
+      row = [];
+    } else {
+      cur += c;
+    }
+  }
+  if (cur || row.length) { row.push(cur); rows.push(row); }
+  const header = rows[0] ?? [];
+  return rows.slice(1).map((f) => {
+    const o = {};
+    header.forEach((h, i) => (o[h] = f[i] ?? ''));
+    return o;
+  });
+}
+
+async function fetchCsvRowsMultiline(file) {
+  const res = await fetch(`https://raw.githubusercontent.com/PokeAPI/pokeapi/master/data/v2/csv/${file}`);
+  if (!res.ok) throw new Error(`${file} → ${res.status}`);
+  return parseCsvWithQuotes(await res.text());
+}
+
 const nrm = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
 
-// Construye { normalize(nombreEN): nombreES } de un *_names.csv (lang 9 = EN, 7 = ES).
+// Construye { normalize(nombreEN): nombreES } y { id: nombreEN } de un *_names.csv (lang 9 = EN, 7 = ES).
 async function esMapFrom(namesCsv, idField) {
   const rows = await fetchCsvRows(namesCsv);
   const en = {}, es = {};
@@ -247,6 +298,26 @@ async function esMapFrom(namesCsv, idField) {
   }
   const out = {};
   for (const id in es) if (en[id]) out[nrm(en[id])] = es[id];
+  return { out, en };
+}
+
+// Construye { normalize(nombreEN): flavor_text_ES } tomando la versión más reciente.
+async function esFlavorFrom(flavorCsv, idField, enById) {
+  const rows = await fetchCsvRowsMultiline(flavorCsv);
+  const best = {};
+  for (const r of rows) {
+    if (r.language_id !== '7') continue;
+    const id = r[idField];
+    const enName = enById[id];
+    if (!enName || !r.flavor_text) continue;
+    const vg = parseInt(r.version_group_id, 10) || 0;
+    const key = nrm(enName);
+    if (!best[key] || vg >= best[key].vg) {
+      best[key] = { vg, text: r.flavor_text.replace(/[\r\n\f]+/g, ' ').replace(/\s{2,}/g, ' ').trim() };
+    }
+  }
+  const out = {};
+  for (const [k, v] of Object.entries(best)) out[k] = v.text;
   return out;
 }
 
@@ -271,13 +342,17 @@ const MOVE_ES_OVERRIDES = {
   twinbeam: 'Láser Doble', wavecrash: 'Envite Acuatico',
 };
 
-let esNames = { moves: {}, abilities: {}, items: {}, natures: {} };
+let esNames = { moves: {}, abilities: {}, items: {}, natures: {}, abilityDesc: {}, itemDesc: {} };
 try {
   const [esMoves, esAbilities, esItems, esNatures] = await Promise.all([
     esMapFrom('move_names.csv', 'move_id'),
     esMapFrom('ability_names.csv', 'ability_id'),
     esMapFrom('item_names.csv', 'item_id'),
     esMapFrom('nature_names.csv', 'nature_id'),
+  ]);
+  const [esAbilityFlavors, esItemFlavors] = await Promise.all([
+    esFlavorFrom('ability_flavor_text.csv', 'ability_id', esAbilities.en),
+    esFlavorFrom('item_flavor_text.csv', 'item_id', esItems.en),
   ]);
   // Filtramos a lo que usa el formato para no inflar el JSON.
   const pick = (full, names) => {
@@ -286,12 +361,22 @@ try {
     return o;
   };
   esNames = {
-    moves: pick(esMoves, Object.values(moveNames)),
-    abilities: pick(esAbilities, [...allAbilities]),
-    items: pick(esItems, [...items]),
-    natures: pick(esNatures, NATURES),
+    moves: pick(esMoves.out, Object.values(moveNames)),
+    abilities: pick(esAbilities.out, [...allAbilities]),
+    items: pick(esItems.out, [...items]),
+    natures: pick(esNatures.out, NATURES),
+    abilityDesc: pick(esAbilityFlavors, [...allAbilities]),
+    itemDesc: pick(esItemFlavors, [...items]),
   };
+  // Rellena megapiedras nuevas sin descripción en PokeAPI a partir de shortDesc.
+  for (const [k, desc] of Object.entries(itemDesc)) {
+    if (!esNames.itemDesc[k]) {
+      const m = desc.match(/^If held by an? (.+?), this item allows it to Mega Evolve in battle\.$/i);
+      if (m) esNames.itemDesc[k] = `Si lo lleva ${m[1]}, le permite megaevolucionar en combate.`;
+    }
+  }
   console.log(`Nombres ES: ${Object.keys(esNames.moves).length} mov · ${Object.keys(esNames.abilities).length} hab · ${Object.keys(esNames.items).length} obj · ${Object.keys(esNames.natures).length} nat`);
+  console.log(`Desc ES: ${Object.keys(esNames.abilityDesc).length}/${Object.keys(abilityDesc).length} hab · ${Object.keys(esNames.itemDesc).length}/${Object.keys(itemDesc).length} obj`);
 } catch (e) {
   console.warn('No se pudieron obtener nombres ES de PokeAPI (se usará inglés):', e.message);
 }
@@ -317,11 +402,13 @@ const output = {
   learnsets,
   items: [...items].sort(),
   itemSprites,
+  itemDesc,
   moves: [...allMoves].sort(),
   moveTypes,
   moveNames,
   moveData,
   abilities: [...allAbilities].sort(),
+  abilityDesc,
   natures: NATURES,
   typeChart,
   es: esNames,

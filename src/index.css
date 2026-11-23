@@ -7,6 +7,7 @@
   --color-poke-accent: #0f3460;
   --color-poke-pink: #e94560;
   --font-sans: "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 body {
@@ -15,6 +16,10 @@ body {
   /* Cifras tabulares: todos los dígitos con el mismo ancho → columnas de stats
      perfectamente alineadas y números que no "bailan" al cambiar. */
   font-variant-numeric: tabular-nums;
+  background-image:
+    radial-gradient(ellipse 75% 40% at 50% -10%, rgba(233, 69, 96, 0.08), transparent 65%),
+    radial-gradient(ellipse 55% 35% at 88% 0%, rgba(56, 189, 248, 0.06), transparent 60%);
+  background-attachment: fixed;
 }
 
 /* Barra de scroll personalizada (en lugar de la blanca por defecto) */
@@ -59,6 +64,26 @@ body {
 .type-dark { @apply bg-gray-700 text-white; }
 .type-steel { @apply bg-gray-400 text-gray-900; }
 .type-fairy { @apply bg-pink-300 text-gray-900; }
+
+/* Halo sutil del tipo principal detrás de sprites */
+.type-glow-normal   { background: rgba(156, 163, 175, 0.22); }
+.type-glow-fire     { background: rgba(249, 115, 22, 0.26); }
+.type-glow-water    { background: rgba(59, 130, 246, 0.26); }
+.type-glow-electric { background: rgba(250, 204, 21, 0.24); }
+.type-glow-grass    { background: rgba(34, 197, 94, 0.24); }
+.type-glow-ice      { background: rgba(103, 232, 249, 0.24); }
+.type-glow-fighting { background: rgba(185, 28, 28, 0.28); }
+.type-glow-poison   { background: rgba(168, 85, 247, 0.26); }
+.type-glow-ground   { background: rgba(180, 83, 9, 0.28); }
+.type-glow-flying   { background: rgba(129, 140, 248, 0.26); }
+.type-glow-psychic  { background: rgba(236, 72, 153, 0.26); }
+.type-glow-bug      { background: rgba(132, 204, 22, 0.24); }
+.type-glow-rock     { background: rgba(161, 98, 7, 0.28); }
+.type-glow-ghost    { background: rgba(126, 34, 206, 0.28); }
+.type-glow-dragon   { background: rgba(67, 56, 202, 0.30); }
+.type-glow-dark     { background: rgba(107, 114, 128, 0.28); }
+.type-glow-steel    { background: rgba(148, 163, 184, 0.24); }
+.type-glow-fairy    { background: rgba(249, 168, 212, 0.26); }
 
 .panel {
   @apply bg-poke-panel rounded-xl border border-poke-accent/50 shadow-lg transition-colors duration-200;

@@ -1,17 +1,29 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useTeam } from '../store/teamStore';
 import { PokemonEditor } from '../components/PokemonEditor';
 import { Toast } from '../components/Toast';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { InfoTooltip } from '../components/InfoTooltip';
 import { useLang } from '../lib/i18n';
-import { getSpecies } from '../lib/championsData';
-import { convertInvestment } from '../lib/stats';
+import { getSpecies, localizeName } from '../lib/championsData';
+import { convertInvestment, totalInvestment, maxInvestment } from '../lib/stats';
 import { parseShowdownTeam } from '../lib/showdownImport';
+import { loadMetaBuilds } from '../lib/metaBuilds';
+import { exportTeamSheetPng } from '../lib/teamSheetPng';
+import { createEmptyPokemon } from '../types/pokemon';
 
 const SHOWDOWN_STAT_LABELS = {
   hp: 'HP', atk: 'Atk', def: 'Def', spa: 'SpA', spd: 'SpD', spe: 'Spe',
 };
+
+function cloneTeamPokemon(list) {
+  return list.map((p) => ({
+    ...p,
+    evs: { ...p.evs },
+    ivs: { ...p.ivs },
+    moves: [...p.moves],
+  }));
+}
 
 export function TeamBuilder({ data }) {
   const { activeTeam, updatePokemon, setActiveTeamPokemon } = useTeam();
@@ -19,17 +31,51 @@ export function TeamBuilder({ data }) {
   const [dragIndex, setDragIndex] = useState(null);
   const [overIndex, setOverIndex] = useState(null);
   const [dropped, setDropped] = useState(null);
+  const [builds, setBuilds] = useState(null);
+  const [undo, setUndo] = useState(null);
+  const [showChecks, setShowChecks] = useState(false);
+  const undoTimerRef = useRef(null);
   // Al cambiar de equipo, deseleccionar (sin hueco activo).
   const [prevTeamId, setPrevTeamId] = useState(activeTeam?.id);
 
   const { t, lang } = useLang();
+
+  useEffect(() => {
+    loadMetaBuilds().then((b) => { if (b) setBuilds(b); });
+    return () => { if (undoTimerRef.current) clearTimeout(undoTimerRef.current); };
+  }, []);
+
+  const teamPokemon = activeTeam?.pokemon;
+  const validation = useMemo(() => computeTeamValidation(teamPokemon ?? [], t, lang), [teamPokemon, t, lang]);
 
   if (!activeTeam) return null;
 
   if (prevTeamId !== activeTeam.id) {
     setPrevTeamId(activeTeam.id);
     setActiveSlot(null);
+    setUndo(null);
+    setShowChecks(false);
   }
+
+  const pushUndo = (label, snapshot) => {
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    setUndo({ label, pokemon: cloneTeamPokemon(snapshot) });
+    undoTimerRef.current = setTimeout(() => setUndo(null), 8000);
+  };
+
+  const applyUndo = () => {
+    if (!undo) return;
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    setActiveTeamPokemon(undo.pokemon);
+    setUndo(null);
+  };
+
+  const handleDeleteSlot = (slotIndex) => {
+    const mon = activeTeam.pokemon[slotIndex];
+    if (!mon?.speciesId) return;
+    pushUndo(`${t('Eliminado')}: ${mon.speciesName}`, activeTeam.pokemon);
+    updatePokemon(slotIndex, createEmptyPokemon(mon.slotId));
+  };
 
   // Reordena el equipo moviendo el Pokémon de `from` a la posición `to`.
   const reorder = (from, to) => {
@@ -58,7 +104,7 @@ export function TeamBuilder({ data }) {
 
   return (
     <div className="page-enter">
-      <div className="mb-6">
+      <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
         <h2 className="text-2xl font-bold flex items-center gap-2">
           {t('Constructor de Equipo')}
           <InfoTooltip side="bottom" label={t('Más información')}>
@@ -67,7 +113,52 @@ export function TeamBuilder({ data }) {
               : 'Monta tu equipo activo: elige especie, habilidad, objeto, naturaleza, movimientos y EVs de cada uno de los 6 slots. Arrastra para reordenar, e importa/exporta en formato Showdown o Poképaste.'}
           </InfoTooltip>
         </h2>
+
+        {validation.filledCount > 0 && (
+          validation.issues.length === 0 && validation.filledCount === 6 ? (
+            <span className="text-xs font-medium text-emerald-300 bg-emerald-950/40 border border-emerald-700/40 rounded-lg px-2.5 py-1">
+              ✓ {t('VGC válido')}
+            </span>
+          ) : validation.issues.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => setShowChecks((s) => !s)}
+              className={`text-xs font-medium px-2.5 py-1 rounded-lg border inline-flex items-center gap-1.5 transition-colors ${
+                validation.ruleErrors > 0
+                  ? 'bg-red-950/50 border-red-700/60 text-red-300 hover:bg-red-900/50'
+                  : 'bg-poke-panel border-poke-accent text-amber-200 hover:border-amber-500/50'
+              }`}
+            >
+              <span>
+                {validation.ruleErrors > 0
+                  ? `⚠ ${validation.ruleErrors} ${t('regla VGC')}`
+                  : `• ${validation.incompleteCount} ${t('incompletos')}`}
+              </span>
+              <span className={`text-[10px] transition-transform ${showChecks ? 'rotate-180' : ''}`}>▾</span>
+            </button>
+          ) : null
+        )}
       </div>
+
+      {showChecks && validation.issues.length > 0 && (
+        <div className="panel p-3 mb-4 space-y-1.5 animate-fade-in-up">
+          {validation.issues.map((it) => (
+            <button
+              key={it.key}
+              type="button"
+              onClick={() => { setActiveSlot(it.slot); setShowChecks(false); }}
+              className={`w-full text-left text-xs px-2.5 py-1.5 rounded-lg flex items-center justify-between gap-2 transition-colors ${
+                it.tone === 'error'
+                  ? 'bg-red-950/40 text-red-300 hover:bg-red-900/40'
+                  : 'bg-poke-dark/50 text-amber-200 hover:bg-poke-accent/40'
+              }`}
+            >
+              <span>{it.tone === 'error' ? '⚠ ' : '• '}{it.text}</span>
+              <span className="text-[11px] text-gray-400 shrink-0">{t('Editar')} →</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mb-4">
         {activeTeam.pokemon.map((mon, i) => (
@@ -94,6 +185,7 @@ export function TeamBuilder({ data }) {
                 data={data}
                 pokemon={mon}
                 slotIndex={i}
+                slotStatus={validation.slotStatuses[i] ?? null}
                 isActive={false}
                 isSelected={i === activeSlot}
                 onSelect={() => setActiveSlot(i)}
@@ -108,30 +200,161 @@ export function TeamBuilder({ data }) {
         <PokemonEditor
           key={`${activeTeam.id}-${activeSlot}`}
           data={data}
+          builds={builds}
+          teamPokemon={activeTeam.pokemon}
           pokemon={activeTeam.pokemon[activeSlot]}
           slotIndex={activeSlot}
           isActive
           onSelect={() => {}}
           onUpdate={(updates) => updatePokemon(activeSlot, updates)}
+          onDelete={() => handleDeleteSlot(activeSlot)}
         />
       )}
 
-      <ShowdownImport data={data} />
+      <ShowdownImport
+        data={data}
+        activeSlot={activeSlot}
+        teamPokemon={activeTeam.pokemon}
+        onImportSlot={(slotIndex, mon) => {
+          const prev = activeTeam.pokemon[slotIndex];
+          if (prev?.speciesId) pushUndo(`${t('Reemplazado')}: ${prev.speciesName}`, activeTeam.pokemon);
+          updatePokemon(slotIndex, { ...mon, slotId: prev?.slotId ?? `slot-${slotIndex}` });
+          setActiveSlot(slotIndex);
+        }}
+        onBeforeImport={() => {
+          if (activeTeam.pokemon.some((p) => p.speciesId)) {
+            pushUndo(t('Equipo reemplazado al importar'), activeTeam.pokemon);
+          }
+        }}
+      />
       <ShowdownExport team={activeTeam} data={data} />
+
+      {undo && (
+        <div
+          role="status"
+          className="fixed bottom-5 right-5 z-50 flex items-center gap-3 px-4 py-2.5 rounded-xl shadow-2xl border border-poke-pink/60 bg-poke-panel/95 text-sm text-white backdrop-blur animate-fade-in-up"
+        >
+          <span>{undo.label}</span>
+          <button
+            type="button"
+            onClick={applyUndo}
+            className="px-2.5 py-1 rounded-lg bg-poke-pink hover:bg-poke-pink/90 text-white text-xs font-semibold transition-colors"
+          >
+            {t('Deshacer')}
+          </button>
+          <button
+            type="button"
+            aria-label={t('Cerrar')}
+            onClick={() => setUndo(null)}
+            className="text-gray-400 hover:text-white text-sm leading-none"
+          >
+            ×
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
-function ShowdownImport({ data }) {
+function computeTeamValidation(pokemon, t, lang) {
+  const filled = pokemon
+    .map((mon, slot) => ({ mon, slot, sp: mon.speciesId ? getSpecies(mon.speciesId) : null }))
+    .filter((x) => x.mon.speciesId && x.sp);
+
+  const issues = [];
+  const slotStatuses = {};
+  const addSlotNote = (slot, tone, note) => {
+    const cur = slotStatuses[slot];
+    if (!cur) slotStatuses[slot] = { tone, notes: [note] };
+    else {
+      if (tone === 'error') cur.tone = 'error';
+      cur.notes.push(note);
+    }
+  };
+
+  let ruleErrors = 0;
+
+  // 1. Species Clause (nº de Pokédex repetido)
+  const byNum = new Map();
+  for (const x of filled) {
+    const arr = byNum.get(x.sp.num) ?? [];
+    arr.push(x);
+    byNum.set(x.sp.num, arr);
+  }
+  for (const arr of byNum.values()) {
+    if (arr.length > 1) {
+      ruleErrors++;
+      const text = `${t('Especie repetida')}: ${arr.map((a) => a.mon.speciesName).join(' / ')}`;
+      issues.push({ key: `species-${arr[0].sp.num}`, tone: 'error', slot: arr[1].slot, text });
+      for (const a of arr) addSlotNote(a.slot, 'error', t('Especie repetida'));
+    }
+  }
+
+  // 2. Item Clause (objeto repetido)
+  const byItem = new Map();
+  for (const x of filled) {
+    const held = x.mon.item || (x.sp.isMega ? x.sp.megaStone : '') || '';
+    if (!held) continue;
+    const arr = byItem.get(held) ?? [];
+    arr.push(x);
+    byItem.set(held, arr);
+  }
+  for (const [item, arr] of byItem.entries()) {
+    if (arr.length > 1) {
+      ruleErrors++;
+      const locItem = localizeName('items', item, lang);
+      const text = `${t('Objeto repetido')}: ${locItem}`;
+      issues.push({ key: `item-${item}`, tone: 'error', slot: arr[1].slot, text });
+      for (const a of arr) addSlotNote(a.slot, 'error', `${t('Objeto repetido')}: ${locItem}`);
+    }
+  }
+
+  // 3. Pokémon incompletos (movimientos, objeto, habilidad, EVs/SP sin repartir)
+  let incompleteCount = 0;
+  for (const { mon, slot, sp } of filled) {
+    const missing = [];
+    const moveCount = mon.moves.filter(Boolean).length;
+    if (moveCount < 4) missing.push(`${moveCount}/4 ${t('movs')}`);
+    const held = mon.item || (sp.isMega ? sp.megaStone : '') || '';
+    if (!held) missing.push(t('sin objeto'));
+    if (!mon.ability) missing.push(t('sin habilidad'));
+    const evMode = mon.evMode ?? 'champions';
+    const inv = totalInvestment(mon.evs, evMode);
+    const max = maxInvestment(evMode);
+    if (inv < max) missing.push(`${inv}/${max} ${evMode === 'champions' ? 'SP' : 'EVs'}`);
+    if (missing.length > 0) {
+      incompleteCount++;
+      issues.push({
+        key: `inc-${slot}`,
+        tone: 'warn',
+        slot,
+        text: `${mon.speciesName}: ${missing.join(', ')}`,
+      });
+      addSlotNote(slot, 'warn', missing.join(' · '));
+    }
+  }
+
+  const formattedStatuses = {};
+  for (const [slot, st] of Object.entries(slotStatuses)) {
+    formattedStatuses[slot] = { tone: st.tone, tip: st.notes.join(' · ') };
+  }
+
+  return { filledCount: filled.length, ruleErrors, incompleteCount, issues, slotStatuses: formattedStatuses };
+}
+
+function ShowdownImport({ data, activeSlot, teamPokemon, onImportSlot, onBeforeImport }) {
   const { setActiveTeamPokemon } = useTeam();
   const { t, lang } = useLang();
-  const [open, setOpen] = useState(false);
+  // null = cerrado · 'team' = importar equipo entero · 'slot' = importar 1 slot
+  const [openMode, setOpenMode] = useState(null);
   const [text, setText] = useState('');
   const [feedback, setFeedback] = useState('');
   const [tone, setTone] = useState('success');
   const [busy, setBusy] = useState(false);
 
-  const doImport = async () => {
+  const toggleMode = (mode) => setOpenMode((cur) => (cur === mode ? null : mode));
+
+  const resolveInput = async () => {
     let teamText = text;
     // Si pegan una URL de pokepast.es, la descargamos vía proxy (evita CORS).
     if (/^https?:\/\/(?:www\.)?pokepast\.es\/[a-zA-Z0-9]+/.test(text.trim())) {
@@ -145,7 +368,7 @@ function ShowdownImport({ data }) {
         setBusy(false);
         setTone('error');
         setFeedback(t('No se pudo cargar el Poképaste.'));
-        return;
+        return null;
       }
       setBusy(false);
     }
@@ -153,43 +376,98 @@ function ShowdownImport({ data }) {
     if (parsed.length === 0) {
       setTone('error');
       setFeedback(t('No se reconoció ningún Pokémon. Pega un equipo en formato Showdown.'));
-      return;
+      return null;
     }
+    return parsed;
+  };
+
+  const doImport = async () => {
+    const parsed = await resolveInput();
+    if (!parsed) return;
+    if (onBeforeImport) onBeforeImport();
     setActiveTeamPokemon(parsed);
     setTone('success');
     setFeedback(`${t('Importados')} ${parsed.length} ${t('Pokémon al equipo activo.')}`);
     setText('');
-    setOpen(false);
+    setOpenMode(null);
+  };
+
+  const targetSlot = activeSlot !== null
+    ? activeSlot
+    : (() => {
+        const emptyIdx = teamPokemon.findIndex((p) => !p.speciesId);
+        return emptyIdx >= 0 ? emptyIdx : 0;
+      })();
+
+  const doImportSlot = async () => {
+    const parsed = await resolveInput();
+    if (!parsed) return;
+    onImportSlot(targetSlot, parsed[0]);
+    setTone('success');
+    setFeedback(`${parsed[0].speciesName} → Slot ${targetSlot + 1}`);
+    setText('');
+    setOpenMode(null);
   };
 
   return (
     <div className="panel p-4 mt-4">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center gap-2 flex-wrap">
         <h3 className="font-semibold flex items-center gap-1.5">
           {t('Importar desde Showdown')}
           <InfoTooltip label={t('Más información')}>
             {lang === 'en'
-              ? 'Paste a team in Showdown format, or a pokepast.es URL, to load it into the active team.'
-              : 'Pega un equipo en formato Showdown, o una URL de pokepast.es, para cargarlo en el equipo activo.'}
+              ? 'Paste a team (or a single Pokémon) in Showdown format, or a pokepast.es URL, to load it into the active team or active slot.'
+              : 'Pega un equipo (o un solo Pokémon) en formato Showdown, o una URL de pokepast.es, para cargarlo en el equipo o en el slot activo.'}
           </InfoTooltip>
         </h3>
-        <button type="button" className="btn-secondary text-sm min-w-[96px] text-center" onClick={() => setOpen((o) => !o)}>
-          {open ? t('Cerrar') : t('Importar')}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className={`btn-secondary text-sm text-center ${openMode === 'team' ? 'ring-1 ring-poke-pink text-poke-pink' : ''}`}
+            onClick={() => toggleMode('team')}
+          >
+            {openMode === 'team' ? t('Cerrar') : t('Importar Equipo')}
+          </button>
+          <button
+            type="button"
+            className={`btn-secondary text-sm text-center ${openMode === 'slot' ? 'ring-1 ring-poke-pink text-poke-pink' : ''}`}
+            onClick={() => toggleMode('slot')}
+          >
+            {openMode === 'slot' ? t('Cerrar') : t('Importar Slot')}
+          </button>
+        </div>
       </div>
-      {open && (
-        <div className="mt-3 space-y-2">
+      {openMode && (
+        <div className="mt-3 space-y-2 animate-fade-in-up">
           <textarea
             className="input-field w-full h-48 font-mono text-xs"
-            placeholder={'Pega tu equipo de Showdown o una URL de pokepast.es...\n\nGarchomp @ Life Orb\nAbility: Rough Skin\nLevel: 50\nEVs: 252 Atk / 4 Def / 252 Spe\nJolly Nature\n- Earthquake\n- ...'}
+            placeholder={
+              openMode === 'slot'
+                ? 'Pega 1 Pokémon en formato Showdown...\n\nIncineroar @ Sitrus Berry\nAbility: Intimidate\nEVs: 252 HP / 4 Atk / 100 Def / 148 SpD / 4 Spe\nCareful Nature\n- Fake Out\n- Flare Blitz\n- Knock Off\n- Parting Shot'
+                : 'Pega tu equipo de Showdown o una URL de pokepast.es...\n\nGarchomp @ Life Orb\nAbility: Rough Skin\nLevel: 50\nEVs: 252 Atk / 4 Def / 252 Spe\nJolly Nature\n- Earthquake\n- ...'
+            }
             value={text}
             onChange={(e) => setText(e.target.value)}
+            autoFocus
           />
-          <div className="flex items-center gap-3">
-            <button type="button" className="btn-primary text-sm" onClick={doImport} disabled={!text.trim() || busy}>
-              {busy ? t('Cargando…') : t('Reemplazar equipo activo')}
-            </button>
-            <span className="text-xs text-gray-400">{t('Sobrescribe los 6 slots del equipo actual.')}</span>
+          <div className="flex flex-wrap items-center gap-3">
+            {openMode === 'team' ? (
+              <>
+                <button type="button" className="btn-primary text-sm" onClick={doImport} disabled={!text.trim() || busy}>
+                  {busy ? t('Cargando…') : t('Reemplazar equipo activo')}
+                </button>
+                <span className="text-xs text-gray-400">{t('Sobrescribe los 6 slots del equipo actual.')}</span>
+              </>
+            ) : (
+              <>
+                <button type="button" className="btn-primary text-sm" onClick={doImportSlot} disabled={!text.trim() || busy}>
+                  {busy ? t('Cargando…') : `${t('Importar Slot')} (${targetSlot + 1})`}
+                </button>
+                <span className="text-xs text-gray-400">
+                  {t('Carga el Pokémon solo en el slot')} {targetSlot + 1}.
+                </span>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -202,6 +480,7 @@ function ShowdownExport({ team, data }) {
   const { t, lang } = useLang();
   const [copied, setCopied] = useState(false);
   const [open, setOpen] = useState(false);
+  const [exportingPng, setExportingPng] = useState(false);
   // 'full' = todo (EVs, naturaleza…); 'open' = lista abierta (sin EVs/naturaleza).
   const [mode, setMode] = useState('full');
 
@@ -263,6 +542,15 @@ function ShowdownExport({ team, data }) {
     form.remove();
   };
 
+  const downloadPng = async () => {
+    setExportingPng(true);
+    try {
+      await exportTeamSheetPng({ team, data, mode, lang });
+    } finally {
+      setExportingPng(false);
+    }
+  };
+
   if (!exportText) return null;
 
   return (
@@ -290,6 +578,14 @@ function ShowdownExport({ team, data }) {
           </button>
           <button type="button" className="btn-secondary text-sm" onClick={createPokepaste}>
             {t('Crear Poképaste')}
+          </button>
+          <button
+            type="button"
+            className="btn-secondary text-sm"
+            disabled={exportingPng}
+            onClick={downloadPng}
+          >
+            {exportingPng ? t('Generando…') : t('Descargar PNG')}
           </button>
           <button type="button" className="btn-secondary text-sm min-w-[90px] text-center" onClick={() => setOpen((o) => !o)}>
             {open ? t('Ocultar') : t('Mostrar')}

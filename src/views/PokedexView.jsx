@@ -1,15 +1,18 @@
 import { memo, useEffect, useMemo, useState } from 'react';
-import { getLearnset, localizeName } from '../lib/championsData';
-import { PokemonSprite } from '../components/PokemonSprite';
+import { getLearnset, localizeName, localizeMoveDesc, localizeAbilityDesc } from '../lib/championsData';
+import { loadMetaBuilds } from '../lib/metaBuilds';
+import { useTeam } from '../store/teamStore';
+import { PokemonSprite, ItemSprite } from '../components/PokemonSprite';
 import { MoveSearch } from '../components/MoveSearch';
 import { Combobox } from '../components/Combobox';
 import { Dropdown } from '../components/Dropdown';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { Modal } from '../components/Modal';
 import { InfoTooltip } from '../components/InfoTooltip';
+import { Toast } from '../components/Toast';
 import { useFlip } from '../lib/useFlip';
 import { useLang } from '../lib/i18n';
-import { TYPE_NAMES } from '../lib/typeChart';
+import { TYPE_NAMES, getTypeEffectiveness } from '../lib/typeChart';
 
 const STAT_KEYS = ['hp', 'atk', 'def', 'spa', 'spd', 'spe'];
 const STAT_LABEL = {
@@ -79,9 +82,59 @@ function CountUp({ value }) {
   return <>{useCountUp(value, true)}</>;
 }
 
+const CATEGORY_STYLE = {
+  Physical: 'bg-red-600 text-white',
+  Special: 'bg-blue-600 text-white',
+  Status: 'bg-gray-500 text-white',
+};
+const CATEGORY_LABEL = {
+  Physical: 'Físico', Special: 'Especial', Status: 'Estado',
+};
+
+/** Debilidades, resistencias e inmunidades defensivas de un conjunto de tipos. */
+function TypeMatchups({ types, typeChart }) {
+  const { t } = useLang();
+  const groups = useMemo(() => {
+    const x4 = [], x2 = [], xHalf = [], xQuarter = [], x0 = [];
+    for (const atk of TYPE_NAMES) {
+      const m = getTypeEffectiveness(atk, types, typeChart);
+      if (m === 4) x4.push(atk);
+      else if (m === 2) x2.push(atk);
+      else if (m === 0.5) xHalf.push(atk);
+      else if (m === 0.25) xQuarter.push(atk);
+      else if (m === 0) x0.push(atk);
+    }
+    return [
+      { label: '×4', cls: 'text-red-400', list: x4 },
+      { label: '×2', cls: 'text-orange-400', list: x2 },
+      { label: '×½', cls: 'text-green-400', list: xHalf },
+      { label: '×¼', cls: 'text-emerald-400', list: xQuarter },
+      { label: '×0', cls: 'text-sky-400', list: x0 },
+    ].filter((g) => g.list.length > 0);
+  }, [types, typeChart]);
+
+  if (groups.length === 0) return null;
+  return (
+    <div className="space-y-1.5">
+      {groups.map((g) => (
+        <div key={g.label} className="flex items-start gap-2">
+          <span className={`w-7 shrink-0 text-xs font-mono font-bold pt-0.5 ${g.cls}`}>{g.label}</span>
+          <div className="flex flex-wrap gap-1">
+            {g.list.map((tp) => (
+              <span key={tp} className={`type-${tp.toLowerCase()} px-1.5 py-0.5 rounded text-[10px] font-medium`}>
+                {t(tp)}
+              </span>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** Card del grid, memoizada: no se re-renderiza al teclear en el buscador.
  *  `cv-card` salta su render cuando está fuera de pantalla. */
-const PokedexCard = memo(function PokedexCard({ s, isMega, onSelect }) {
+const PokedexCard = memo(function PokedexCard({ s, isMega, usage, onSelect }) {
   const { t, lang } = useLang();
   const abilityLabel = (a) => localizeName('abilities', a, lang);
   return (
@@ -115,8 +168,15 @@ const PokedexCard = memo(function PokedexCard({ s, isMega, onSelect }) {
         <div className="mt-1.5 flex flex-col gap-0.5">
           {STAT_KEYS.map((k, i) => <StatBar key={k} label={t(STAT_LABEL[k])} value={s.baseStats[k]} animate delay={i * 40} />)}
         </div>
-        <div className="text-[10px] mt-1 text-right">
-          <span className="text-gray-500">BST</span> <span className="text-poke-pink font-semibold">{bst(s)}</span>
+        <div className="text-[10px] mt-1 flex items-center justify-between">
+          {usage > 0 ? (
+            <span className="text-gray-400 font-mono">
+              {t('Uso')} <span className="text-poke-pink font-semibold">{usage.toFixed(1)}%</span>
+            </span>
+          ) : <span />}
+          <span>
+            <span className="text-gray-500">BST</span> <span className="text-poke-pink font-semibold">{bst(s)}</span>
+          </span>
         </div>
       </div>
     </div>
@@ -125,6 +185,7 @@ const PokedexCard = memo(function PokedexCard({ s, isMega, onSelect }) {
 
 export function PokedexView({ data }) {
   const { t, lang } = useLang();
+  const { activeTeam, updatePokemon } = useTeam();
 
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
@@ -137,12 +198,54 @@ export function PokedexView({ data }) {
   const [sort, setSort] = useState('num');
   const [asc, setAsc] = useState(true);
   const [selected, setSelected] = useState(null);
+  const [builds, setBuilds] = useState(null);
+  const [toastMsg, setToastMsg] = useState('');
+  const [toastTone, setToastTone] = useState('success');
+
+  useEffect(() => {
+    loadMetaBuilds().then((b) => { if (b) setBuilds(b); });
+  }, []);
 
   // Debounce de la búsqueda: evita recalcular y re-medir el FLIP en cada tecla.
   useEffect(() => {
     const id = setTimeout(() => setDebouncedQuery(query), 150);
     return () => clearTimeout(id);
   }, [query]);
+
+  // % de uso en Smogon por especie base (máximo entre forma base y sus megas).
+  const usageByBaseId = useMemo(() => {
+    const m = new Map();
+    if (!builds?.pokemon) return m;
+    for (const s of data.species) {
+      const u = builds.pokemon[s.id]?.usage ?? 0;
+      if (u <= 0) continue;
+      const key = s.isMega && s.baseSpeciesId ? s.baseSpeciesId : s.id;
+      m.set(key, Math.max(m.get(key) ?? 0, u));
+    }
+    return m;
+  }, [builds, data.species]);
+
+  const addSpeciesToTeam = (sp) => {
+    if (!activeTeam) return;
+    const emptyIdx = activeTeam.pokemon.findIndex((p) => !p.speciesId);
+    if (emptyIdx < 0) {
+      setToastTone('error');
+      setToastMsg(t('Tu equipo activo está lleno (6/6).'));
+      return;
+    }
+    const updates = {
+      speciesId: sp.id,
+      speciesName: sp.name,
+      ability: sp.abilities?.[0] ?? '',
+      item: sp.isMega ? (sp.megaStone ?? '') : '',
+      preMegaAbility: sp.isMega ? (sp.baseAbilities?.[0] ?? '') : undefined,
+      moves: ['', '', '', ''],
+      level: 50,
+    };
+    updatePokemon(emptyIdx, updates);
+    setToastTone('success');
+    setToastMsg(`${sp.name} → Slot ${emptyIdx + 1}`);
+  };
 
   // Ids de especie base que tienen al menos una megaevolución en el formato.
   const megaBaseIds = useMemo(() => {
@@ -196,13 +299,14 @@ export function PokedexView({ data }) {
     const cmp = (a, b) => {
       if (sort === 'name') return a.name.localeCompare(b.name);
       if (sort === 'num') return a.num - b.num;
+      if (sort === 'usage') return (usageByBaseId.get(a.id) ?? 0) - (usageByBaseId.get(b.id) ?? 0);
       const va = sort === 'bst' ? bst(a) : a.baseStats[sort];
       const vb = sort === 'bst' ? bst(b) : b.baseStats[sort];
       return va - vb;
     };
     list.sort((a, b) => (asc ? cmp(a, b) : -cmp(a, b)));
     return list;
-  }, [baseSpecies, debouncedQuery, selTypes, ability, selMoves, learnsetSets, megaFilter, megaBaseIds, statMins, sort, asc]);
+  }, [baseSpecies, debouncedQuery, selTypes, ability, selMoves, learnsetSets, megaFilter, megaBaseIds, statMins, sort, asc, usageByBaseId]);
 
   const setStatMin = (k, v) =>
     setStatMins((m) => ({ ...m, [k]: Math.max(0, v) }));
@@ -235,6 +339,13 @@ export function PokedexView({ data }) {
     () => (selected ? data.species.filter((m) => m.isMega && m.baseSpeciesId === selected.id) : []),
     [selected, data]
   );
+
+  const detailMoves = useMemo(
+    () => (selected ? getLearnset(selected.id, data) : []),
+    [selected, data]
+  );
+
+  const openDetail = (sp) => setSelected(sp);
 
   return (
     <div className="page-enter">
@@ -420,9 +531,13 @@ export function PokedexView({ data }) {
               <label className="text-xs text-gray-400">{t('Ordenar por')}</label>
               <Dropdown
                 value={sort}
-                options={['num', 'name', ...STAT_KEYS, 'bst']}
-                render={(v) => (v === 'num' ? t('Número') : v === 'bst' ? t('Total (BST)') : v === 'name' ? t('Nombre') : t(STAT_LABEL[v]))}
-                onChange={(v) => setSort(v)}
+                options={['num', 'usage', 'name', ...STAT_KEYS, 'bst']}
+                render={(v) => (v === 'num' ? t('Número') : v === 'usage' ? t('Uso (Smogon)') : v === 'bst' ? t('Total (BST)') : v === 'name' ? t('Nombre') : t(STAT_LABEL[v]))}
+                onChange={(v) => {
+                  setSort(v);
+                  if (v === 'usage' || v === 'bst' || STAT_KEYS.includes(v)) setAsc(false);
+                  else setAsc(true);
+                }}
                 className="w-40"
                 expand
               />
@@ -461,7 +576,13 @@ export function PokedexView({ data }) {
           ) : (
             <div ref={gridRef} className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
               {results.map((s) => (
-                <PokedexCard key={s.id} s={s} isMega={megaBaseIds.has(s.id)} onSelect={setSelected} />
+                <PokedexCard
+                  key={s.id}
+                  s={s}
+                  isMega={megaBaseIds.has(s.id)}
+                  usage={usageByBaseId.get(s.id) ?? 0}
+                  onSelect={openDetail}
+                />
               ))}
             </div>
           )}
@@ -469,7 +590,7 @@ export function PokedexView({ data }) {
       </div>
 
       {/* Detalle del Pokémon */}
-      <Modal open={!!selected} onClose={() => setSelected(null)} title={selected?.name ?? ''} widthClass="max-w-lg">
+      <Modal open={!!selected} onClose={() => setSelected(null)} title={selected?.name ?? ''} widthClass="max-w-2xl">
         {selected && (
           <div className="space-y-4">
             <div className="flex items-start gap-4 animate-fade-in-up">
@@ -483,55 +604,178 @@ export function PokedexView({ data }) {
                   {megaBaseIds.has(selected.id) && (
                     <span className="mega-badge text-[10px] font-bold tracking-wide px-1.5 py-0.5 rounded bg-gradient-to-r from-poke-pink to-purple-500 text-white">MEGA</span>
                   )}
+                  {(builds?.pokemon?.[selected.id]?.usage ?? 0) > 0 && (
+                    <span className="text-xs font-mono text-poke-pink">
+                      {builds.pokemon[selected.id].usage.toFixed(1)}% {t('de uso')}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => addSpeciesToTeam(selected)}
+                    className="ml-auto btn-primary text-xs px-3 py-1.5"
+                  >
+                    + {t('Añadir al equipo')}
+                  </button>
                 </div>
-                <div className="mt-2">
-                  <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1">{t('Habilidad')}</div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {selected.abilities.map((a) => (
-                      <span key={a} className="text-xs px-2 py-0.5 rounded-full bg-poke-accent/40 border border-poke-accent text-gray-100">{abilityLabel(a)}</span>
-                    ))}
+                <div className="mt-2.5">
+                  <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1">{t('Habilidades')}</div>
+                  <div className="space-y-1.5">
+                    {selected.abilities.map((a) => {
+                      const desc = localizeAbilityDesc(a, lang);
+                      return (
+                        <div key={a} className="text-xs">
+                          <span className="inline-block px-2 py-0.5 rounded-full bg-poke-accent/40 border border-poke-accent text-gray-100 font-medium mr-1.5">
+                            {abilityLabel(a)}
+                          </span>
+                          {desc && <span className="text-gray-400">{desc}</span>}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="animate-fade-in-up" style={{ animationDelay: '70ms' }}>
-              <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">{t('Estadísticas')}</div>
-              <div className="flex flex-col gap-1">
-                {STAT_KEYS.map((k, i) => <CountUpStatBar key={k} label={t(STAT_LABEL[k])} value={selected.baseStats[k]} delay={i * 50} />)}
-                <div className="flex items-center gap-2 mt-0.5 pt-1 border-t border-poke-accent/30">
-                  <span className="w-10 shrink-0 text-[10px] font-semibold text-gray-300">BST</span>
-                  <span className="w-7 shrink-0 text-[10px] text-right tabular-nums text-poke-pink font-semibold"><CountUp value={bst(selected)} /></span>
+            <div className="grid sm:grid-cols-2 gap-4 animate-fade-in-up" style={{ animationDelay: '70ms' }}>
+              <div>
+                <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">{t('Estadísticas')}</div>
+                <div className="flex flex-col gap-1">
+                  {STAT_KEYS.map((k, i) => <CountUpStatBar key={k} label={t(STAT_LABEL[k])} value={selected.baseStats[k]} delay={i * 50} />)}
+                  <div className="flex items-center gap-2 mt-0.5 pt-1 border-t border-poke-accent/30">
+                    <span className="w-10 shrink-0 text-[10px] font-semibold text-gray-300">BST</span>
+                    <span className="w-7 shrink-0 text-[10px] text-right tabular-nums text-poke-pink font-semibold"><CountUp value={bst(selected)} /></span>
+                  </div>
                 </div>
+              </div>
+              <div>
+                <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">{t('Debilidades y resistencias')}</div>
+                <TypeMatchups types={selected.types} typeChart={data.typeChart} />
               </div>
             </div>
 
             {detailMegas.length > 0 && (
-              <div className="animate-fade-in-up" style={{ animationDelay: '140ms' }}>
+              <div className="animate-fade-in-up" style={{ animationDelay: '120ms' }}>
                 <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">{t('Megaevolución')}</div>
-                <div className="space-y-2">
-                  {detailMegas.map((m) => (
-                    <div key={m.id} className="rounded-lg border border-poke-accent/40 bg-poke-dark/20 p-3">
-                      <div className="flex items-center gap-2 flex-wrap mb-2">
-                        <span className="font-semibold text-white text-sm">{m.name}</span>
-                        {m.types.map((tp) => (
-                          <span key={tp} className={`type-${tp.toLowerCase()} px-1.5 py-0.5 rounded text-[10px] font-medium`}>{t(tp)}</span>
-                        ))}
-                        <span className="ml-auto text-[10px] text-gray-400">
-                          <span className="text-gray-500">BST</span> <span className="text-poke-pink font-semibold"><CountUp value={bst(m)} /></span>
-                        </span>
+                <div className="space-y-2.5">
+                  {detailMegas.map((m) => {
+                    const megaUsage = builds?.pokemon?.[m.id]?.usage ?? 0;
+                    const typesChanged = m.types.join('/') !== selected.types.join('/');
+                    return (
+                      <div key={m.id} className="rounded-lg border border-poke-accent/40 bg-poke-dark/25 p-3 space-y-2.5">
+                        <div className="flex items-start gap-3">
+                          <PokemonSprite speciesId={m.id} skeleton className="w-16 h-16 object-contain shrink-0" alt={m.name} />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-semibold text-white text-sm">{m.name}</span>
+                              {m.types.map((tp) => (
+                                <span key={tp} className={`type-${tp.toLowerCase()} px-1.5 py-0.5 rounded text-[10px] font-medium`}>{t(tp)}</span>
+                              ))}
+                              {megaUsage > 0 && (
+                                <span className="text-[11px] font-mono text-poke-pink">{megaUsage.toFixed(1)}%</span>
+                              )}
+                              <span className="text-[10px] text-gray-400">
+                                <span className="text-gray-500">BST</span> <span className="text-poke-pink font-semibold"><CountUp value={bst(m)} /></span>
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => addSpeciesToTeam(m)}
+                                className="ml-auto btn-secondary text-xs px-2.5 py-1 border border-poke-pink/40 text-poke-pink hover:bg-poke-pink/15"
+                              >
+                                + {t('Añadir')}
+                              </button>
+                            </div>
+                            {m.megaStone && (
+                              <div className="flex items-center gap-1.5 text-xs text-gray-300 mt-1">
+                                <ItemSprite item={m.megaStone} size={18} />
+                                <span>{localizeName('items', m.megaStone, lang)}</span>
+                              </div>
+                            )}
+                            {m.abilities.length > 0 && (
+                              <div className="mt-1.5 space-y-1">
+                                {m.abilities.map((a) => {
+                                  const desc = localizeAbilityDesc(a, lang);
+                                  return (
+                                    <div key={a} className="text-xs">
+                                      <span className="inline-block px-2 py-0.5 rounded-full bg-poke-pink/15 border border-poke-pink/40 text-poke-pink font-medium mr-1.5">
+                                        {abilityLabel(a)}
+                                      </span>
+                                      {desc && <span className="text-gray-400">{desc}</span>}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className={typesChanged ? 'grid sm:grid-cols-2 gap-3' : ''}>
+                          <div className="flex flex-col gap-1">
+                            {STAT_KEYS.map((k, i) => <CountUpStatBar key={k} label={t(STAT_LABEL[k])} value={m.baseStats[k]} delay={i * 50} />)}
+                          </div>
+                          {typesChanged && (
+                            <div>
+                              <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">{t('Debilidades y resistencias')}</div>
+                              <TypeMatchups types={m.types} typeChart={data.typeChart} />
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex flex-col gap-1">
-                        {STAT_KEYS.map((k, i) => <CountUpStatBar key={k} label={t(STAT_LABEL[k])} value={m.baseStats[k]} delay={i * 50} />)}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
+
+            {/* Learnset */}
+            <div className="animate-fade-in-up" style={{ animationDelay: '160ms' }}>
+              <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">
+                {t('Movimientos')} ({detailMoves.length})
+              </div>
+              <div className="max-h-56 overflow-auto rounded-lg border border-poke-accent/40">
+                <table className="w-full text-xs border-collapse">
+                  <thead className="text-gray-400 uppercase text-[10px] text-left sticky top-0 bg-poke-panel z-10">
+                    <tr>
+                      <th className="px-2 py-1.5 font-semibold">{t('Nombre')}</th>
+                      <th className="px-2 py-1.5 font-semibold">{t('Tipo')}</th>
+                      <th className="px-2 py-1.5 font-semibold">{t('Cat.')}</th>
+                      <th className="px-2 py-1.5 text-right font-semibold">{t('Pot.')}</th>
+                      <th className="px-2 py-1.5 text-right font-semibold">{t('Prec.')}</th>
+                      <th className="px-2 py-1.5 font-semibold">{t('Efecto')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {detailMoves.length === 0 ? (
+                      <tr><td colSpan={6} className="px-2 py-4 text-center text-gray-500">{t('Sin movimientos')}</td></tr>
+                    ) : (
+                      detailMoves.map((id, i) => {
+                        const md = data.moveData?.[id];
+                        return (
+                          <tr key={id} className={`border-t border-poke-accent/20 ${i % 2 ? 'bg-white/[0.02]' : ''}`}>
+                            <td className="px-2 py-1.5 font-medium whitespace-nowrap text-gray-100">{moveLabel(id)}</td>
+                            <td className="px-2 py-1.5">
+                              {md && <span className={`type-${md.type.toLowerCase()} px-1.5 py-0.5 rounded text-[10px] font-medium`}>{t(md.type)}</span>}
+                            </td>
+                            <td className="px-2 py-1.5">
+                              {md && (
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${CATEGORY_STYLE[md.category] ?? ''}`}>
+                                  {t(CATEGORY_LABEL[md.category] ?? md.category)}
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-2 py-1.5 text-right font-mono">{md && md.power > 0 ? md.power : '—'}</td>
+                            <td className="px-2 py-1.5 text-right font-mono">{md && md.accuracy != null ? `${md.accuracy}%` : '—'}</td>
+                            <td className="px-2 py-1.5 text-gray-400 min-w-[10rem]">{localizeMoveDesc(id, md?.desc, lang)}</td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
       </Modal>
+      <Toast message={toastMsg} onClose={() => setToastMsg('')} tone={toastTone} />
     </div>
   );
 }

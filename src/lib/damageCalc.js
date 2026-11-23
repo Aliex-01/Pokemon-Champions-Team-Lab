@@ -12,7 +12,7 @@ function buildPokemon(m) {
   const sp = getSpecies(m.speciesId);
   if (!sp) return null;
   const evs = m.evMode === 'champions' ? toTraditionalEvs(m.evs) : m.evs;
-  return new Pokemon(gen, m.speciesName || sp.name, {
+  const poke = new Pokemon(gen, m.speciesName || sp.name, {
     level: m.level || 50,
     ability: m.ability || sp.abilities[0] || '',
     item: m.item || undefined,
@@ -25,6 +25,27 @@ function buildPokemon(m) {
     // Supreme Overlord (General Supremo) lo aplica @smogon/calc con este valor.
     alliesFainted: Math.min(5, Math.max(0, m.alliesFainted || 0)),
   });
+  if (m.curHPPercent != null && m.curHPPercent < 100) {
+    const pct = Math.max(1, Math.min(100, m.curHPPercent));
+    poke.originalCurHP = Math.max(1, Math.round((poke.maxHP() * pct) / 100));
+  }
+  return poke;
+}
+
+/** Opciones de nº de golpes si el movimiento es multigolpe variable (2–5 o Population Bomb). */
+export function getMultiHitOptions(moveId) {
+  if (!moveId) return null;
+  if (moveId === 'populationbomb') return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+  try {
+    const md = gen.moves.get(moveId);
+    if (md && Array.isArray(md.multihit)) {
+      const [lo, hi] = md.multihit;
+      const out = [];
+      for (let h = lo; h <= hi; h++) out.push(h);
+      return out;
+    }
+  } catch { /* ignore */ }
+  return null;
 }
 
 // La protección se aplica a mano (mecánica de Champions), no vía @smogon/calc.
@@ -49,6 +70,7 @@ export function calcMove(
   field,
   attackerSide,
   defenderSide,
+  hitsOverride,
 ) {
   if (!moveId || !attacker.speciesId || !defender.speciesId) return null;
   const a = buildPokemon(attacker);
@@ -58,7 +80,11 @@ export function calcMove(
   try {
     // Pasamos la habilidad del atacante para que el nº de golpes multigolpe
     // (Skill Link → 5) sea correcto; el resto del daño usa la habilidad del Pokémon.
-    const moveOpts = { isCrit: field.crit, ability: attacker.ability || undefined };
+    const moveOpts = {
+      isCrit: field.crit,
+      ability: attacker.ability || undefined,
+      ...(hitsOverride ? { hits: hitsOverride } : {}),
+    };
 
     // @smogon/calc identifica movimientos con lógica de tipo dinámica (Weather
     // Ball, Techno Blast, Multi-Attack…) por `move.originalName`, que fija al
@@ -160,21 +186,25 @@ export function calcMove(
     try { safeDesc = result.desc(); }
     catch { safeDesc = `${attacker.speciesName} ${moveId} vs. ${defender.speciesName}: inmune`; }
 
+    const multiHitOptions = getMultiHitOptions(moveId);
+    const defenderHpPct = defender.curHPPercent ?? 100;
+
     if (max === 0) {
       const koChance = defenderSide.protected ? 'Protegido' : 'Inmune';
-      return { moveId, min: 0, max: 0, pctMin: 0, pctMax: 0, koChance, desc: safeDesc + descNote };
+      return { moveId, min: 0, max: 0, pctMin: 0, pctMax: 0, koChance, desc: safeDesc + descNote, hits: move.hits, multiHitOptions, defenderHpPct };
     }
 
     const maxHp = d.maxHP();
+    const curHp = d.curHP();
     const pctMin = Math.round((min / maxHp) * 1000) / 10;
     const pctMax = Math.round((max / maxHp) * 1000) / 10;
 
     let koChance = '';
-    if (min >= maxHp) koChance = 'OHKO';
-    else if (max >= maxHp) koChance = `${Math.round(((max - maxHp + 1) / (max - min + 1)) * 100)}% OHKO`;
-    else koChance = `${Math.ceil(maxHp / max)}HKO`;
+    if (min >= curHp) koChance = 'OHKO';
+    else if (max >= curHp) koChance = `${Math.round(((max - curHp + 1) / (max - min + 1)) * 100)}% OHKO`;
+    else koChance = `${Math.ceil(curHp / max)}HKO`;
 
-    return { moveId, min, max, pctMin, pctMax, koChance, desc: safeDesc + descNote };
+    return { moveId, min, max, pctMin, pctMax, koChance, desc: safeDesc + descNote, hits: move.hits, multiHitOptions, defenderHpPct };
   } catch {
     return null;
   }

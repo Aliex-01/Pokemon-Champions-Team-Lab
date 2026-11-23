@@ -129,9 +129,13 @@ export function BuildsView({ data }) {
               : 'Estos sets salen del uso real en las estadísticas de Smogon (la habilidad, objeto, naturaleza, EVs, movimientos y compañeros más usados de cada Pokémon), no son builds elegidos a mano.'}
           </InfoTooltip>
         </h2>
-        {builds && !builds.format.includes('regmb') && (
+        {builds && !builds.format.includes('regmc') ? (
           <p className="text-xs text-amber-400 mt-1">{t('Reg M-C aún no publicada en Smogon: mostrando Reg M-A.')}</p>
-        )}
+        ) : builds ? (
+          <p className="text-xs text-gray-400 mt-1">
+            Smogon · Reg M-C · {builds.month} · {builds.rating}+
+          </p>
+        ) : null}
       </div>
 
       {loading ? (
@@ -168,8 +172,9 @@ export function BuildsView({ data }) {
       ) : !activeTeam ? null : (
         <>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mb-4">
-            {activeTeam.pokemon.map((p, i) =>
-              p.speciesId ? (
+            {activeTeam.pokemon.map((p, i) => {
+              const primaryType = p.speciesId ? getSpecies(p.speciesId)?.types?.[0]?.toLowerCase() : null;
+              return p.speciesId ? (
                 <button
                   key={p.slotId}
                   type="button"
@@ -180,7 +185,10 @@ export function BuildsView({ data }) {
                       : 'hover:border-poke-pink/50'
                   }`}
                 >
-                  <PokemonSprite speciesId={p.speciesId} className="w-14 h-14 object-contain" />
+                  <div className="relative flex items-center justify-center">
+                    {primaryType && <div className={`absolute inset-1 rounded-full blur-md pointer-events-none type-glow-${primaryType}`} />}
+                    <PokemonSprite speciesId={p.speciesId} className="relative w-14 h-14 object-contain drop-shadow" />
+                  </div>
                   <span className="text-xs font-medium text-center truncate w-full">{p.speciesName}</span>
                 </button>
               ) : (
@@ -190,8 +198,8 @@ export function BuildsView({ data }) {
                 >
                   {t('Vacío')}
                 </div>
-              )
-            )}
+              );
+            })}
           </div>
 
           {selectedSlot == null ? (
@@ -206,7 +214,12 @@ export function BuildsView({ data }) {
                 <div key={`flash-${applyKey}`} className="green-flash pointer-events-none absolute inset-0 rounded-xl" />
               )}
               <div className="flex items-center gap-3 mb-3">
-                <PokemonSprite speciesId={slotMon.speciesId} className="w-16 h-16 object-contain" />
+                <div className="relative shrink-0 flex items-center justify-center">
+                  {getSpecies(slotMon.speciesId)?.types?.[0] && (
+                    <div className={`absolute inset-1 rounded-full blur-md pointer-events-none type-glow-${getSpecies(slotMon.speciesId).types[0].toLowerCase()}`} />
+                  )}
+                  <PokemonSprite speciesId={slotMon.speciesId} className="relative w-16 h-16 object-contain drop-shadow" />
+                </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="text-xl font-bold truncate">{slotMon.speciesName}</h3>
                   <p className="text-poke-pink text-sm">

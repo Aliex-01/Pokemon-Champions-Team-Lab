@@ -37,6 +37,24 @@ export function localizeMoveDesc(moveId, enDesc, lang) {
   return cache?.es?.moveDesc?.[moveId] ?? enDesc;
 }
 
+/** Descripción de una habilidad en el idioma dado. */
+export function localizeAbilityDesc(abilityName, lang) {
+  if (!abilityName) return '';
+  const k = normName(abilityName);
+  const en = cache?.abilityDesc?.[k] ?? '';
+  if (lang !== 'es') return en;
+  return cache?.es?.abilityDesc?.[k] ?? en;
+}
+
+/** Descripción de un objeto en el idioma dado. */
+export function localizeItemDesc(itemName, lang) {
+  if (!itemName) return '';
+  const k = normName(itemName);
+  const en = cache?.itemDesc?.[k] ?? '';
+  if (lang !== 'es') return en;
+  return cache?.es?.itemDesc?.[k] ?? en;
+}
+
 /** Busca la especie mega cuya megapiedra coincide con `stone` (para parsear |-mega|). */
 export function getMegaByStone(stone) {
   if (!cache || !stone) return undefined;
