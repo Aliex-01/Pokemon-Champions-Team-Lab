@@ -388,10 +388,21 @@ export function TournamentTeamsView({ data }) {
                           )}
                         </div>
                       )}
-                      <div className="w-full flex flex-col gap-0.5 mt-0.5 pt-1 border-t border-poke-accent/25">
-                        {moves.map((mid, k) => (
-                          <span key={k} className="text-[10px] text-gray-300 text-center truncate">{localizeName('moves', data.moveNames[mid] ?? mid, lang)}</span>
-                        ))}
+                      <div className="w-full grid grid-cols-2 gap-1 mt-0.5 pt-1.5 border-t border-poke-accent/25">
+                        {moves.map((mid, k) => {
+                          const label = localizeName('moves', data.moveNames[mid] ?? mid, lang);
+                          const mType = data.moveData?.[mid]?.type;
+                          return (
+                            <span
+                              key={k}
+                              title={label}
+                              className="flex items-center gap-1 min-w-0 px-1.5 py-0.5 rounded bg-poke-dark/45 border border-poke-accent/25 text-[10px] text-gray-200"
+                            >
+                              {mType && <span className={`type-${mType.toLowerCase()} w-1.5 h-1.5 rounded-full shrink-0`} />}
+                              <span className="truncate">{label}</span>
+                            </span>
+                          );
+                        })}
                       </div>
                       {evLine && (
                         <div className="text-[10px] text-gray-400 text-center mt-0.5 leading-tight">
