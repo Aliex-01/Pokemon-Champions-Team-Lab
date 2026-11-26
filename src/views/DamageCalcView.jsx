@@ -171,6 +171,27 @@ export function DamageCalcView({ data }) {
     return base ? builds.pokemon[base] ?? null : null;
   })();
 
+  // Mapas de % de uso del rival (para ordenar sus ataques, objetos y habilidades por uso en el meta).
+  const normKey = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const rivalMoveUsage = useMemo(() => {
+    const m = new Map();
+    for (const mv of rivalBuild?.moves ?? []) {
+      const norm = normKey(mv.name);
+      m.set(moveIdByName.get(norm) ?? norm, mv.pct);
+    }
+    return m;
+  }, [rivalBuild, moveIdByName]);
+  const rivalItemUsage = useMemo(() => {
+    const m = new Map();
+    for (const it of rivalBuild?.items ?? []) m.set(normKey(it.name), it.pct);
+    return m;
+  }, [rivalBuild]);
+  const rivalAbilityUsage = useMemo(() => {
+    const m = new Map();
+    for (const ab of rivalBuild?.abilities ?? []) m.set(normKey(ab.name), ab.pct);
+    return m;
+  }, [rivalBuild]);
+
   const applyMetaToRival = () => {
     if (!rivalBuild) return;
     const sp = getSpecies(rival.speciesId);
@@ -539,6 +560,9 @@ export function DamageCalcView({ data }) {
             onChange={setRival}
             hasMeta={!!rivalBuild}
             onApplyMeta={applyMetaToRival}
+            moveUsageMap={rivalMoveUsage}
+            itemUsageMap={rivalItemUsage}
+            abilityUsageMap={rivalAbilityUsage}
             field={field}
             hpPct={rivalHpPct}
             onHpPct={setRivalHpPct}
@@ -930,11 +954,28 @@ function Chip({ label, active, onClick, className = '', fromRight = false }) {
   );
 }
 
-function RivalEditor({ data, mon, onChange, hasMeta, onApplyMeta, field, hpPct = 100, onHpPct }) {
+function RivalEditor({ data, mon, onChange, hasMeta, onApplyMeta, moveUsageMap, itemUsageMap, abilityUsageMap, field, hpPct = 100, onHpPct }) {
   const { t, lang } = useLang();
   const species = mon.speciesId ? getSpecies(mon.speciesId) : null;
   const learnset = mon.speciesId ? getLearnset(mon.speciesId, data) : [];
   const set = (patch) => onChange({ ...mon, ...patch });
+  const normKey = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  const sortedAbilities = useMemo(() => {
+    const list = species?.abilities ?? [];
+    if (!abilityUsageMap || abilityUsageMap.size === 0) return list;
+    return [...list].sort((a, b) => (abilityUsageMap.get(normKey(b)) ?? -1) - (abilityUsageMap.get(normKey(a)) ?? -1));
+  }, [species, abilityUsageMap]);
+
+  const itemOptions = useMemo(() => {
+    const sorted = !itemUsageMap || itemUsageMap.size === 0
+      ? data.items
+      : [...data.items].sort((a, b) => (itemUsageMap.get(normKey(b)) ?? -1) - (itemUsageMap.get(normKey(a)) ?? -1));
+    return sorted.map((i) => {
+      const pct = itemUsageMap?.get(normKey(i));
+      return { id: i, label: localizeName('items', i, lang), badge: pct != null && pct >= 1 ? `${Math.round(pct)}%` : null };
+    });
+  }, [data.items, itemUsageMap, lang]);
 
   const zero = { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
   const applyPreset = (preset) => {
@@ -1001,7 +1042,23 @@ function RivalEditor({ data, mon, onChange, hasMeta, onApplyMeta, field, hpPct =
               {species.isMega ? (
                 <div className="select-field bg-poke-dark/60 text-gray-300 cursor-not-allowed truncate">{localizeName('abilities', mon.ability, lang)}</div>
               ) : (
-                <Dropdown value={mon.ability} options={species.abilities} render={(a) => localizeName('abilities', a, lang)} onChange={(ability) => set({ ability })} />
+                <Dropdown
+                  value={mon.ability}
+                  options={sortedAbilities}
+                  render={(a) => localizeName('abilities', a, lang)}
+                  renderOption={(a) => {
+                    const lbl = localizeName('abilities', a, lang);
+                    const pct = abilityUsageMap?.get(normKey(a));
+                    if (pct == null || pct < 1) return lbl;
+                    return (
+                      <span className="flex items-center justify-between gap-2 w-full">
+                        <span className="truncate">{lbl}</span>
+                        <span className="text-xs font-mono text-poke-pink shrink-0">{Math.round(pct)}%</span>
+                      </span>
+                    );
+                  }}
+                  onChange={(ability) => set({ ability })}
+                />
               )}
             </Field>
             <Field label={t('Naturaleza')}>
@@ -1016,7 +1073,7 @@ function RivalEditor({ data, mon, onChange, hasMeta, onApplyMeta, field, hpPct =
               ) : (
                 <SearchSelect
                   placeholder={t('Objeto…')}
-                  options={data.items.map((i) => ({ id: i, label: localizeName('items', i, lang) }))}
+                  options={itemOptions}
                   value={localizeName('items', mon.item, lang)}
                   onPick={(item) => set({ item })}
                   icon={(i) => <ItemSprite item={i} className="w-6 h-6" />}
@@ -1114,6 +1171,7 @@ function RivalEditor({ data, mon, onChange, hasMeta, onApplyMeta, field, hpPct =
                   onPick={(v) => { const moves = [...mon.moves]; moves[i] = v; set({ moves }); }}
                   placeholder={`${t('Movimiento')} ${i + 1}`}
                   lang={lang}
+                  usageMap={moveUsageMap}
                   clearable
                 />
               ))}
@@ -1209,7 +1267,8 @@ function SearchSelect({ placeholder, options, value, onPick, icon, valueIcon }) 
                 onClick={() => { onPick(o.id); setQuery(o.label); setOpen(false); }}
               >
                 {icon?.(o.id)}
-                <span className="truncate">{o.label}</span>
+                <span className="truncate flex-1">{o.label}</span>
+                {o.badge && <span className="text-xs font-mono text-poke-pink shrink-0">{o.badge}</span>}
               </button>
             </li>
           ))}

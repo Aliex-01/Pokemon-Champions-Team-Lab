@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
  * Selector con búsqueda por texto (coincide en cualquier posición). Cierra al
  * perder el foco y al elegir. Base reutilizable para movimientos, habilidades, etc.
  */
-export function Combobox({ items, value, getLabel, onPick, placeholder, clearable, limit = 40 }) {
+export function Combobox({ items, value, getLabel, renderOption, onPick, placeholder, clearable, limit = 40 }) {
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(false);
 
@@ -33,7 +33,9 @@ export function Combobox({ items, value, getLabel, onPick, placeholder, clearabl
           )}
           {results.map((id) => (
             <li key={id}>
-              <button type="button" className="w-full text-left px-3 py-2 hover:bg-poke-accent/50 text-sm" onMouseDown={() => { onPick(id); setOpen(false); }}>{getLabel(id)}</button>
+              <button type="button" className="w-full text-left px-3 py-2 hover:bg-poke-accent/50 text-sm" onMouseDown={() => { onPick(id); setOpen(false); }}>
+                {renderOption ? renderOption(id) : getLabel(id)}
+              </button>
             </li>
           ))}
         </ul>

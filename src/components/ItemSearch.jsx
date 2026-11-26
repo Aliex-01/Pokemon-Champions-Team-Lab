@@ -2,15 +2,21 @@ import { useMemo, useState } from 'react';
 import { localizeName } from '../lib/championsData';
 import { ItemSprite } from './PokemonSprite';
 
+const normKey = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+
 /** Selector de objeto con búsqueda por texto (coincide en cualquier posición). */
-export function ItemSearch({ items, value, onPick, placeholder, lang, disabled, clearable }) {
+export function ItemSearch({ items, value, onPick, placeholder, lang, disabled, clearable, usageMap }) {
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(false);
   const label = (name) => (name ? localizeName('items', name, lang) : '');
+  const sortedItems = useMemo(() => {
+    if (!usageMap || usageMap.size === 0) return items;
+    return [...items].sort((a, b) => (usageMap.get(normKey(b)) ?? -1) - (usageMap.get(normKey(a)) ?? -1));
+  }, [items, usageMap]);
   const results = useMemo(() => {
     const s = q.toLowerCase().trim();
-    return (s ? items.filter((n) => localizeName('items', n, lang).toLowerCase().includes(s)) : items).slice(0, 40);
-  }, [q, items, lang]);
+    return (s ? sortedItems.filter((n) => localizeName('items', n, lang).toLowerCase().includes(s)) : sortedItems).slice(0, 40);
+  }, [q, sortedItems, lang]);
 
   return (
     <div className="relative">
@@ -32,13 +38,20 @@ export function ItemSearch({ items, value, onPick, placeholder, lang, disabled, 
           {clearable && (
             <li><button type="button" className="w-full text-left px-3 py-2 hover:bg-poke-accent/50 text-sm text-gray-400" onMouseDown={() => { onPick(''); setOpen(false); }}>— —</button></li>
           )}
-          {results.map((name) => (
-            <li key={name}>
-              <button type="button" className="w-full text-left px-3 py-2 hover:bg-poke-accent/50 text-sm flex items-center gap-2" onMouseDown={() => { onPick(name); setOpen(false); }}>
-                <ItemSprite item={name} className="w-5 h-5" />{localizeName('items', name, lang)}
-              </button>
-            </li>
-          ))}
+          {results.map((name) => {
+            const pct = usageMap?.get(normKey(name));
+            return (
+              <li key={name}>
+                <button type="button" className="w-full text-left px-3 py-2 hover:bg-poke-accent/50 text-sm flex items-center gap-2" onMouseDown={() => { onPick(name); setOpen(false); }}>
+                  <ItemSprite item={name} className="w-5 h-5 shrink-0" />
+                  <span className="truncate flex-1">{localizeName('items', name, lang)}</span>
+                  {pct != null && pct >= 1 && (
+                    <span className="text-xs font-mono text-poke-pink shrink-0">{Math.round(pct)}%</span>
+                  )}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

@@ -16,6 +16,36 @@ import { calcAllStats, getNatureMod, convertInvestment, totalInvestment, MAX_TOT
 import { loadMetaBuilds } from '../lib/metaBuilds';
 import { DEFAULT_IVS } from '../types/pokemon';
 
+const normKey = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+function makeUsageMap(entries) {
+  const m = new Map();
+  for (const e of entries ?? []) m.set(normKey(e.name), e.pct);
+  return m;
+}
+
+function orderedItems(allItems, priorityList, usageMap) {
+  const prio = new Set(priorityList);
+  return [...allItems].sort((a, b) => {
+    const ua = usageMap.get(normKey(a)) ?? -1;
+    const ub = usageMap.get(normKey(b)) ?? -1;
+    if (ub !== ua) return ub - ua;
+    return (prio.has(b) ? 1 : 0) - (prio.has(a) ? 1 : 0);
+  });
+}
+
+function renderAbilityOption(ability, usageMap, lang) {
+  const label = localizeName('abilities', ability, lang);
+  const pct = usageMap.get(normKey(ability));
+  if (pct == null || pct < 1) return label;
+  return (
+    <span className="flex items-center justify-between gap-2 w-full">
+      <span className="truncate">{label}</span>
+      <span className="text-xs font-mono text-poke-pink shrink-0">{Math.round(pct)}%</span>
+    </span>
+  );
+}
+
 const parseSpread = (evs) => {
   const [hp, atk, def, spa, spd, spe] = evs.split('/').map((n) => parseInt(n, 10) || 0);
   return { hp, atk, def, spa, spd, spe };
@@ -862,11 +892,34 @@ function DefenseTool({ data, mon, t, lang, onApply, onAddGoal }) {
   const learn = atk ? getLearnset(atk.id, data) : [];
   const move = moveId ? data.moveData?.[moveId] : undefined;
   const defStat = move?.category === 'Physical' ? 'def' : 'spd';
-  // Set más usado del atacante (para la opción "Spread del meta").
+  // Set más usado del atacante (para la opción "Spread del meta" y ordenar movimientos por uso).
   const metaBuild = useMemo(() => {
     if (!builds || !atk) return null;
     return builds.pokemon[atk.id] ?? (atk.baseSpeciesId ? builds.pokemon[atk.baseSpeciesId] : null) ?? null;
   }, [builds, atk]);
+  const moveIdByName = useMemo(() => {
+    const m = new Map();
+    for (const [id, name] of Object.entries(data.moveNames ?? {})) {
+      m.set(name.toLowerCase().replace(/[^a-z0-9]/g, ''), id);
+    }
+    return m;
+  }, [data]);
+  const moveUsageMap = useMemo(() => {
+    const m = new Map();
+    for (const mv of metaBuild?.moves ?? []) {
+      const norm = normKey(mv.name);
+      m.set(moveIdByName.get(norm) ?? norm, mv.pct);
+    }
+    return m;
+  }, [metaBuild, moveIdByName]);
+  const itemUsageMap = useMemo(() => makeUsageMap(metaBuild?.items), [metaBuild]);
+  const atkItems = useMemo(() => orderedItems(data.items, OFFENSIVE_ITEMS, itemUsageMap), [data.items, itemUsageMap]);
+  const abilityUsageMap = useMemo(() => makeUsageMap(metaBuild?.abilities), [metaBuild]);
+  const sortedAtkAbilities = useMemo(() => {
+    const list = atk?.abilities ?? [];
+    if (abilityUsageMap.size === 0) return list;
+    return [...list].sort((a, b) => (abilityUsageMap.get(normKey(b)) ?? -1) - (abilityUsageMap.get(normKey(a)) ?? -1));
+  }, [atk, abilityUsageMap]);
   const hasMeta = !!metaBuild?.spreads?.[0];
   const metaItemName = metaBuild?.items?.[0]?.name;
   const atkItemEff = atkInvest === 'meta' ? (metaItemName && metaItemName !== 'Sin objeto' ? metaItemName : '') : atkItem;
@@ -1054,7 +1107,7 @@ function DefenseTool({ data, mon, t, lang, onApply, onAddGoal }) {
 
           <div className="flex items-center gap-2">
             <div className="flex-1 min-w-0">
-              <MoveSearch moves={learn} value={moveId} names={data.moveNames ?? {}} onPick={setMoveId} placeholder={t('Buscar movimiento…')} lang={lang} />
+              <MoveSearch moves={learn} value={moveId} names={data.moveNames ?? {}} onPick={setMoveId} placeholder={t('Buscar movimiento…')} lang={lang} usageMap={moveUsageMap} />
             </div>
             <ToggleChip variant="sky" active={!singleTarget} onClick={() => setSingleTarget((v) => !v)} title={t('Objetivo del ataque')} className="text-xs shrink-0">
               {singleTarget ? t('Único') : t('Área')}
@@ -1075,9 +1128,15 @@ function DefenseTool({ data, mon, t, lang, onApply, onAddGoal }) {
           </div>
 
           <div className={`grid gap-2 ${atk ? 'grid-cols-2' : 'grid-cols-1'}`}>
-            <ItemSearch items={OFFENSIVE_ITEMS.filter((i) => data.items.includes(i))} value={atkItemEff} onPick={setAtkItem} placeholder={t('Sin objeto')} lang={lang} disabled={atkInvest === 'meta'} clearable />
+            <ItemSearch items={atkItems} value={atkItemEff} onPick={setAtkItem} placeholder={t('Sin objeto')} lang={lang} disabled={atkInvest === 'meta'} usageMap={itemUsageMap} clearable />
             {atk && (
-              <Dropdown value={atkAbilityEff} options={atk.abilities} render={(a) => localizeName('abilities', a, lang)} onChange={setAtkAbility} />
+              <Dropdown
+                value={atkAbilityEff}
+                options={sortedAtkAbilities}
+                render={(a) => localizeName('abilities', a, lang)}
+                renderOption={(a) => renderAbilityOption(a, abilityUsageMap, lang)}
+                onChange={setAtkAbility}
+              />
             )}
           </div>
         </div>
@@ -1208,6 +1267,14 @@ function OffenseTool({ data, mon, t, lang, onApply, onAddGoal }) {
     if (!builds || !target) return null;
     return builds.pokemon[target.id] ?? (target.baseSpeciesId ? builds.pokemon[target.baseSpeciesId] : null) ?? null;
   }, [builds, target]);
+  const itemUsageMap = useMemo(() => makeUsageMap(metaBuild?.items), [metaBuild]);
+  const defItems = useMemo(() => orderedItems(data.items, DEFENSIVE_ITEMS, itemUsageMap), [data.items, itemUsageMap]);
+  const abilityUsageMap = useMemo(() => makeUsageMap(metaBuild?.abilities), [metaBuild]);
+  const sortedDefAbilities = useMemo(() => {
+    const list = target?.abilities ?? [];
+    if (abilityUsageMap.size === 0) return list;
+    return [...list].sort((a, b) => (abilityUsageMap.get(normKey(b)) ?? -1) - (abilityUsageMap.get(normKey(a)) ?? -1));
+  }, [target, abilityUsageMap]);
   const hasMeta = !!metaBuild?.spreads?.[0];
   // Objeto del objetivo: manual, o el más usado del meta cuando se elige ese spread.
   const metaItem = metaBuild?.items?.[0]?.name;
@@ -1431,9 +1498,15 @@ function OffenseTool({ data, mon, t, lang, onApply, onAddGoal }) {
           </div>
 
           <div className={`grid gap-2 ${target ? 'grid-cols-2' : 'grid-cols-1'}`}>
-            <ItemSearch items={DEFENSIVE_ITEMS.filter((i) => data.items.includes(i))} value={offItem} onPick={setDefItem} placeholder={t('Sin objeto')} lang={lang} disabled={bulk === 'meta'} clearable />
+            <ItemSearch items={defItems} value={offItem} onPick={setDefItem} placeholder={t('Sin objeto')} lang={lang} disabled={bulk === 'meta'} usageMap={itemUsageMap} clearable />
             {target && (
-              <Dropdown value={defAbilityEff} options={target.abilities} render={(a) => localizeName('abilities', a, lang)} onChange={setDefAbility} />
+              <Dropdown
+                value={defAbilityEff}
+                options={sortedDefAbilities}
+                render={(a) => localizeName('abilities', a, lang)}
+                renderOption={(a) => renderAbilityOption(a, abilityUsageMap, lang)}
+                onChange={setDefAbility}
+              />
             )}
           </div>
         </div>
